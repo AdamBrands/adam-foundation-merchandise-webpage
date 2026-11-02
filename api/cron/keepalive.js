@@ -1,5 +1,5 @@
-import { sql } from '../../lib/db.js';
-import { isCron } from '../../lib/request.js';
+import { sql } from '../_lib/db.js';
+import { isCron } from '../_lib/request.js';
 
 // Vercel cron, daily (see vercel.json). Free Supabase projects pause after a
 // week with no activity, which would break the book form; one query a day prevents that.

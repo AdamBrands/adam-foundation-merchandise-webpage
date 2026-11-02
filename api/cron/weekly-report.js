@@ -1,6 +1,6 @@
-import { getRequestsCsv, getSummary, summaryTable } from '../../lib/report.js';
-import { sendEmail } from '../../lib/email.js';
-import { isCron, londonDate } from '../../lib/request.js';
+import { getRequestsCsv, getSummary, summaryTable } from '../_lib/report.js';
+import { sendEmail } from '../_lib/email.js';
+import { isCron, londonDate } from '../_lib/request.js';
 
 // Vercel cron, Mondays (see vercel.json). Emails the last 7 days and all-time
 // totals to REPORT_EMAIL_TO, with every book request attached as a CSV. The

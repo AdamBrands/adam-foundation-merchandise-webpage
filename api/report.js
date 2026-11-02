@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
-import { getRequestsCsv, getSummary, summaryTable } from '../lib/report.js';
-import { escapeHtml, londonDate } from '../lib/request.js';
+import { getRequestsCsv, getSummary, summaryTable } from './_lib/report.js';
+import { escapeHtml, londonDate } from './_lib/request.js';
 
 // Private report at /report (rewritten here by vercel.json), protected by HTTP
 // Basic Auth. ?range=7|30|all, or ?from=YYYY-MM-DD&to=YYYY-MM-DD. ?format=csv

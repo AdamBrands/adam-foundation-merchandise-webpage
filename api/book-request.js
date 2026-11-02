@@ -1,7 +1,7 @@
-import { sql } from '../lib/db.js';
-import { bookEmail, sendEmail } from '../lib/email.js';
-import { CONSENT_TEXT, CONSENT_VERSION } from '../lib/consent.js';
-import { cleanCode, deviceFrom, escapeHtml } from '../lib/request.js';
+import { sql } from './_lib/db.js';
+import { bookEmail, sendEmail } from './_lib/email.js';
+import { CONSENT_TEXT, CONSENT_VERSION } from './_lib/consent.js';
+import { cleanCode, deviceFrom, escapeHtml } from './_lib/request.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 

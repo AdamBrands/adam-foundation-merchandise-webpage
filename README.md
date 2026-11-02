@@ -21,7 +21,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `api/report.js`: password-protected report and CSV download.
 - `api/cron/weekly-report.js`: Monday email with the weekly summary and a CSV of all requests.
 - `api/cron/keepalive.js`: daily query that stops the free Supabase project pausing.
-- `lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes.
+- `api/_lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes. The underscore keeps this folder private: Vercel neither publishes it nor turns it into web addresses.
 - `db/schema.sql`: database tables, row-level security and the `connect_writer` role. Already applied.
 - `adhkar/adhkar-book.pdf`: the book. It is published on the site and bundled with the book-request function so it can be attached.
 - `vercel.json`: `/q/:code` and `/report` rewrites, the London function region, the PDF bundling and the two crons.
@@ -43,7 +43,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 5. If sending fails, the row is marked `failed`. The visitor is told the book will follow, and the report flags it so staff can send it by hand.
 6. A hidden "honeypot" field catches simple bots. Their submissions are not stored.
 
-If you change the checkbox wording in `index.html`, update `lib/consent.js` to match and bump `CONSENT_VERSION`.
+If you change the checkbox wording in `index.html`, update `api/_lib/consent.js` to match and bump `CONSENT_VERSION`.
 
 ## QR codes and reporting
 
@@ -54,7 +54,7 @@ https://connect.adamfoundation.com/q/tote
 https://connect.adamfoundation.com/q/eid-dinner-2026
 ```
 
-Codes are lowercase letters, numbers and hyphens, up to 40 characters. Any code works without a code change. To give one a friendly name in the report, add it to `lib/sources.js`. Use `/q/test` when testing: test scans and requests are left out of the report.
+Codes are lowercase letters, numbers and hyphens, up to 40 characters. Any code works without a code change. To give one a friendly name in the report, add it to `api/_lib/sources.js`. Use `/q/test` when testing: test scans and requests are left out of the report.
 
 The report is at `/report`, signed in with `REPORT_USER` (default `adam`) and `REPORT_PASSWORD`. It shows the following per QR code and in total:
 

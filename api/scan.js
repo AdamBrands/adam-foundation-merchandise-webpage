@@ -1,5 +1,5 @@
-import { sql } from '../lib/db.js';
-import { cleanCode, deviceFrom } from '../lib/request.js';
+import { sql } from './_lib/db.js';
+import { cleanCode, deviceFrom } from './_lib/request.js';
 
 // Printed QR codes point at /q/<code>, rewritten here by vercel.json.
 // Records the scan, then sends the visitor to the page with the source attached.
