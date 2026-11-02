@@ -36,9 +36,11 @@ ${week.totals.failed ? `<p style="background:#fff5e6;border-left:4px solid #ad8c
     html,
     text: `Last 7 days (${from} to ${to}): ${week.totals.scans} QR scans, ${week.totals.requests} book requests, ${week.totals.opt_ins} marketing opt-ins.\nAll time: ${allTime.totals.scans} QR scans, ${allTime.totals.requests} book requests, ${allTime.totals.opt_ins} marketing opt-ins.\nFull report: https://connect.adamfoundation.com/report`,
     attachments: [{
-      filename: `adhkar-book-requests_to_${to}.csv`,
+      type: 'text/csv',
+      name: `adhkar-book-requests_to_${to}.csv`,
       content: Buffer.from(`﻿${csv}`).toString('base64'),
     }],
+    tags: ['weekly-report'],
   });
 
   return Response.json({ ok: true, from, to });

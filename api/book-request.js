@@ -58,7 +58,7 @@ export async function POST(request) {
   if (duplicate) return reply(200, successMessage(email));
 
   try {
-    const emailId = await sendEmail(bookEmail({ email, optIn }));
+    const emailId = await sendEmail(await bookEmail({ email, optIn }));
     await sql`update book_requests set email_status = 'sent', email_id = ${emailId} where id = ${id}`;
   } catch (err) {
     console.error('book email failed', err);

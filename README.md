@@ -8,7 +8,7 @@ The page is static HTML and CSS with no framework or build step. A few Vercel Fu
 - `/api/book-request` stores an Adhkar book request and emails the book.
 - `/report` shows scans, requests and opt-ins by QR code.
 
-Data is held in Supabase. Email is sent through Resend.
+Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactional), using the Foundation's existing account.
 
 ## Files
 
@@ -73,17 +73,24 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 - Tables: `scans` and `book_requests`. Row-level security is on, and the public API keys have no access.
 - The site connects as `connect_writer` through the London pooler (transaction mode, port 6543). That role can read and add rows and update request status. It cannot delete rows.
 
-**Resend**
+**Mandrill**
 
-- Send from a subdomain, e.g. `mail.adamfoundation.com`, so the Microsoft 365 setup on the root domain is untouched.
-- Add the DNS records Resend gives you for that subdomain, then verify the domain in Resend.
+- Send from the subdomain `mail.adamfoundation.com`, so the Microsoft 365 setup on the root domain is untouched.
+- In Mandrill, go to Settings → Domains → Sending Domains and add `mail.adamfoundation.com`. Add the records it shows in GoDaddy:
+  - an ownership check (TXT), unless you confirm by email instead
+  - DKIM: `mte1._domainkey.mail` and `mte2._domainkey.mail`
+  - SPF on `mail`, including `spf.mandrillapp.com`
+- Mandrill must show the domain as verified, with DKIM and SPF valid, before it will send.
+- Open and click tracking are switched off in the code, so links stay as written.
+- Emails are tagged `adhkar-book` or `weekly-report` in Mandrill's activity log.
+- If the PDF can't be fetched for attaching, the book email still goes out with the download link.
 
 ## Environment variables (Vercel project settings)
 
 | Name | Value |
 |---|---|
 | `DATABASE_URL` | `connect_writer` connection string. The working value is in `.env.local` (not committed). |
-| `RESEND_API_KEY` | Resend API key |
+| `MANDRILL_API_KEY` | Mandrill API key (Mandrill → Settings → SMTP & API Info) |
 | `MAIL_FROM` | e.g. `Adam Foundation <hello@mail.adamfoundation.com>` |
 | `MAIL_REPLY_TO` | A monitored Adam Foundation mailbox |
 | `BOOK_PDF_URL` | Public link to the PDF, e.g. `https://connect.adamfoundation.com/adhkar/adhkar-book.pdf` |
@@ -96,9 +103,9 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 ## Go-live checklist
 
 1. Add the Adhkar PDF as `adhkar/<file>.pdf` and set `BOOK_PDF_URL`.
-2. Set up Resend and its DNS records, then set the mail variables.
+2. Verify `mail.adamfoundation.com` in Mandrill (DNS records above), then set the mail variables.
 3. Add all environment variables in Vercel and redeploy.
-4. Add `connect.adamfoundation.com` to the Vercel project and make it the primary domain. At the DNS host, add the CNAME Vercel shows. Set `business.adamfoundation.com` to redirect (308) to it in Vercel's domain settings.
+4. Make `connect.adamfoundation.com` the primary domain in Vercel. Its DNS record is already in place and serves over HTTPS. Set `business.adamfoundation.com` to redirect (308) to it in Vercel's domain settings.
 5. Confirm the privacy policy (https://adamfoundation.com/privacy-policy/) covers the Adhkar book requests and marketing opt-ins.
 6. Test on iPhone and Android with printed samples:
    - Scan each QR code.
