@@ -1,0 +1,22 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["lhr1"],
+  "rewrites": [
+    { "source": "/q/:code", "destination": "/api/scan?code=:code" },
+    { "source": "/report", "destination": "/api/report" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    },
+    {
+      "source": "/report",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    }
+  ],
+  "crons": [
+    { "path": "/api/cron/keepalive", "schedule": "0 5 * * *" },
+    { "path": "/api/cron/weekly-report", "schedule": "0 8 * * 1" }
+  ]
+}
