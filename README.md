@@ -23,7 +23,8 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `api/cron/keepalive.js`: daily query that stops the free Supabase project pausing.
 - `lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes.
 - `db/schema.sql`: database tables, row-level security and the `connect_writer` role. Already applied.
-- `vercel.json`: `/q/:code` and `/report` rewrites, the London function region and the two crons.
+- `adhkar/adhkar-book.pdf`: the book. It is published on the site and bundled with the book-request function so it can be attached.
+- `vercel.json`: `/q/:code` and `/report` rewrites, the London function region, the PDF bundling and the two crons.
 - `links.json`: reference list of outbound links (documentation only).
 - `references/`, `docs/`: reference material. Not deployed.
 
@@ -75,15 +76,14 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 
 **Mandrill**
 
-- Send from the subdomain `mail.adamfoundation.com`, so the Microsoft 365 setup on the root domain is untouched.
-- In Mandrill, go to Settings → Domains → Sending Domains and add `mail.adamfoundation.com`. Add the records it shows in GoDaddy:
-  - an ownership check (TXT), unless you confirm by email instead
-  - DKIM: `mte1._domainkey.mail` and `mte2._domainkey.mail`
-  - SPF on `mail`, including `spf.mandrillapp.com`
-- Mandrill must show the domain as verified, with DKIM and SPF valid, before it will send.
+- The sending domain is `adamfoundation.com` itself, also used by Microsoft 365. It's set up in Mandrill under Settings → Domains → Sending Domains. Its records in GoDaddy:
+  - Ownership: TXT `mandrill_verify.…` on `adamfoundation.com` (in place)
+  - DKIM: CNAMEs `mte1._domainkey` → `dkim1.mandrillapp.com` and `mte2._domainkey` → `dkim2.mandrillapp.com` (in place)
+  - SPF: the domain must keep **one** SPF record, covering both senders: `v=spf1 include:spf.protection.outlook.com include:spf.mandrillapp.com -all`. Edit the existing record rather than adding a second. Two SPF records break the check for Microsoft 365 email too.
+- Mandrill must show the domain as verified, with DKIM and SPF valid, before it will send. Mandrill's DKIM signature matches the From address, so the domain's DMARC policy (`p=quarantine`) passes.
 - Open and click tracking are switched off in the code, so links stay as written.
 - Emails are tagged `adhkar-book` or `weekly-report` in Mandrill's activity log.
-- If the PDF can't be fetched for attaching, the book email still goes out with the download link.
+- The book is attached from the copy deployed with the site, so attachments also work on preview deployments. If the file is missing, the email still goes out with the download link.
 
 ## Environment variables (Vercel project settings)
 
@@ -91,10 +91,10 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 |---|---|
 | `DATABASE_URL` | `connect_writer` connection string. The working value is in `.env.local` (not committed). |
 | `MANDRILL_API_KEY` | Mandrill API key (Mandrill → Settings → SMTP & API Info) |
-| `MAIL_FROM` | e.g. `Adam Foundation <hello@mail.adamfoundation.com>` |
+| `MAIL_FROM` | e.g. `Adam Foundation <hello@adamfoundation.com>`. Use a real or aliased Microsoft 365 address, so bounces and replies reach someone. |
 | `MAIL_REPLY_TO` | A monitored Adam Foundation mailbox |
-| `BOOK_PDF_URL` | Public link to the PDF, e.g. `https://connect.adamfoundation.com/adhkar/adhkar-book.pdf` |
-| `BOOK_ATTACH_PDF` | `false` to send only the download link (default: attach as well) |
+| `BOOK_PDF_URL` | Download link shown in the email: `https://connect.adamfoundation.com/adhkar/adhkar-book.pdf` |
+| `BOOK_ATTACH_PDF` | `false` to send only the download link (default: attach the PDF as well) |
 | `REPORT_PASSWORD` | Password for `/report` |
 | `REPORT_USER` | Optional, defaults to `adam` |
 | `REPORT_EMAIL_TO` | Comma-separated recipients of the weekly report |
@@ -102,8 +102,8 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 
 ## Go-live checklist
 
-1. Add the Adhkar PDF as `adhkar/<file>.pdf` and set `BOOK_PDF_URL`.
-2. Verify `mail.adamfoundation.com` in Mandrill (DNS records above), then set the mail variables.
+1. Add the Adhkar PDF as exactly `adhkar/adhkar-book.pdf` (ideally under 5 MB) and set `BOOK_PDF_URL`. To replace the book later, overwrite that file and redeploy.
+2. Add Mandrill to the SPF record (see Mandrill above), check that Mandrill shows `adamfoundation.com` as verified, then set the mail variables.
 3. Add all environment variables in Vercel and redeploy.
 4. Make `connect.adamfoundation.com` the primary domain in Vercel. Its DNS record is already in place and serves over HTTPS. Set `business.adamfoundation.com` to redirect (308) to it in Vercel's domain settings.
 5. Confirm the privacy policy (https://adamfoundation.com/privacy-policy/) covers the Adhkar book requests and marketing opt-ins.
