@@ -17,8 +17,9 @@ const MAX_ATTACH_BYTES = 10 * 1024 * 1024;
 export async function sendEmail({ to, subject, html, text, attachments, tags }) {
   const key = process.env.MANDRILL_API_KEY;
   if (!key) throw new Error('MANDRILL_API_KEY is not set');
+  if (!process.env.MAIL_FROM) throw new Error('MAIL_FROM is not set');
   const from = parseAddress(process.env.MAIL_FROM);
-  if (!from) throw new Error('MAIL_FROM is not set');
+  if (!from) throw new Error(`MAIL_FROM is not a valid address: ${JSON.stringify(process.env.MAIL_FROM)}`);
 
   const res = await fetch('https://mandrillapp.com/api/1.0/messages/send', {
     method: 'POST',
@@ -53,9 +54,11 @@ export async function sendEmail({ to, subject, html, text, attachments, tags }) 
   return body.map((r) => r._id).join(',');
 }
 
-// "Adam Foundation <hello@adamfoundation.com>" or a bare address.
+// "Adam Foundation <hello@adamfoundation.com>" or a bare address. Quotes pasted
+// around the whole value (as in a .env file) are ignored.
 function parseAddress(value) {
-  const match = String(value ?? '').trim().match(/^(?:"?([^"<]*?)"?\s*)?<([^<>\s]+@[^<>\s]+)>$|^([^<>\s]+@[^<>\s]+)$/);
+  const cleaned = String(value ?? '').trim().replace(/^(['"])(.*)\1$/, '$2').replace(/;$/, '').trim();
+  const match = cleaned.match(/^(?:"?([^"<]*?)"?\s*)?<([^<>\s]+@[^<>\s]+)>$|^([^<>\s]+@[^<>\s]+)$/);
   if (!match) return null;
   return { name: match[1] || undefined, email: match[2] || match[3] };
 }
