@@ -15,7 +15,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `index.html`: the page. Includes the Adhkar book form (`#adhkar-book`).
 - `assets/css/styles.css`: responsive styles scoped to `#af-discover`.
 - `assets/js/book.js`: submits the book form without leaving the page and shows the confirmation. Without JavaScript, the form posts normally.
-- `assets/images/`: logos, event photograph, Westminster border and WhatsApp QR image.
+- `assets/images/`: logos, Westminster banner, Westminster skyline border and WhatsApp QR image.
 - `api/scan.js`: logs a scan (code, device type, time; no IP addresses or cookies), then redirects to `/?src=<code>`. Link previews and bots are redirected but not logged, using the same rules as the RMS portal's dynamic QR counter.
 - `api/book-request.js`: validates the email, stores the request and marketing choice, and sends the book.
 - `api/report.js`: password-protected report and CSV download.
