@@ -6,10 +6,10 @@
     "bytes": 13223
   },
   {
-    "path": "assets/images/eid-dinner.jpg",
-    "width": 506,
-    "height": 368,
-    "bytes": 58034
+    "path": "assets/images/westminster-hero.jpg",
+    "width": 1000,
+    "height": 404,
+    "bytes": 112413
   },
   {
     "path": "assets/images/community-exchange-logo.jpg",
@@ -36,9 +36,9 @@
     "bytes": 9627
   },
   {
-    "path": "assets/images/westminster-skyline.jpg",
-    "width": 1055,
-    "height": 156,
-    "bytes": 57648
+    "path": "assets/images/westminster-skyline.webp",
+    "width": 1100,
+    "height": 186,
+    "bytes": 56632
   }
 ]
