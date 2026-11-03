@@ -16,7 +16,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `assets/css/styles.css`: responsive styles scoped to `#af-discover`.
 - `assets/js/book.js`: submits the book form without leaving the page and shows the confirmation. Without JavaScript, the form posts normally.
 - `assets/images/`: logos, event photograph, Westminster border and WhatsApp QR image.
-- `api/scan.js`: logs a scan (code, device type, time; no IP addresses or cookies), then redirects to `/?src=<code>`.
+- `api/scan.js`: logs a scan (code, device type, time; no IP addresses or cookies), then redirects to `/?src=<code>`. Link previews and bots are redirected but not logged, using the same rules as the RMS portal's dynamic QR counter.
 - `api/book-request.js`: validates the email, stores the request and marketing choice, and sends the book.
 - `api/report.js`: password-protected report and CSV download.
 - `api/cron/weekly-report.js`: Monday email with the weekly summary and a CSV of all requests.
@@ -47,7 +47,7 @@ If you change the checkbox wording in `index.html`, update `api/_lib/consent.js`
 
 ## QR codes and reporting
 
-Each printed QR code should encode its own link, for example:
+The printed codes are dynamic QR codes from the RMS portal. Each one encodes an RMS short link (`qr.michalblance.com/q/…`), which counts the scan and forwards to the destination set in the portal. Set each code's destination (type "Website URL") to its own link here, for example:
 
 ```
 https://connect.adamfoundation.com/q/tote

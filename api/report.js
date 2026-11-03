@@ -55,7 +55,7 @@ a{color:#0055b8}input{font:inherit;padding:4px 6px}button{font:inherit;padding:5
 ${summary.totals.failed ? `<p class="warn">${summary.totals.failed} book email${summary.totals.failed === 1 ? '' : 's'} failed to send in this period. Filter the CSV by email_status = failed and send these by hand.</p>` : ''}
 <div class="wrap">${summaryTable(summary)}</div>
 <a class="csv" href="?${query}&amp;format=csv">Download book requests (CSV)</a>
-<p class="note">QR scans count each time a printed code is opened. Book requests exclude repeat requests from the same address within 10 minutes. The opt-in rate is marketing opt-ins divided by the number of different people who asked for the book. Totals count each person once, so they can be lower than the sum of the rows.</p>
+<p class="note">QR scans count each time a printed code is opened; link previews and bots are not counted, matching the RMS portal.Book requests exclude repeat requests from the same address within 10 minutes. The opt-in rate is marketing opt-ins divided by the number of different people who asked for the book. Totals count each person once, so they can be lower than the sum of the rows.</p>
 </main></body></html>`, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   });
