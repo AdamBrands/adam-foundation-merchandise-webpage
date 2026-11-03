@@ -23,7 +23,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `api/cron/keepalive.js`: daily query that stops the free Supabase project pausing.
 - `api/_lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes. The underscore keeps this folder private: Vercel neither publishes it nor turns it into web addresses.
 - `db/schema.sql`: database tables, row-level security and the `connect_writer` role. Already applied.
-- `adhkar/adhkar-book.pdf`: the book. It is published on the site and bundled with the book-request function so it can be attached.
+- `adhkar/adhkar-book.pdf`: the book ("Daily Adhkar", 82 pages), published at `/adhkar/adhkar-book.pdf`. It's a lighter copy of the designer's print file "ADHKAR BOOK (Perfect bound) version 2.pdf". Only the background images are recompressed, and the text and artwork are unchanged (23 MB instead of 27 MB).
 - `vercel.json`: `/q/:code` and `/report` rewrites, the London function region, the PDF bundling and the two crons.
 - `links.json`: reference list of outbound links (documentation only).
 - `references/`, `docs/`: reference material. Not deployed.
@@ -83,7 +83,7 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 - Mandrill must show the domain as verified, with DKIM and SPF valid, before it will send. Mandrill's DKIM signature matches the From address, so the domain's DMARC policy (`p=quarantine`) passes.
 - Open and click tracking are switched off in the code, so links stay as written.
 - Emails are tagged `adhkar-book` or `weekly-report` in Mandrill's activity log.
-- The book is attached from the copy deployed with the site, so attachments also work on preview deployments. If the file is missing, the email still goes out with the download link.
+- The book is attached from the copy deployed with the site, but only when it is 10 MB or smaller. Attachments grow by a third when sent, and many inboxes refuse emails over 20–25 MB. The current book is 23 MB, so the email carries the download link only. If the file is missing, the email still goes out with the link.
 
 ## Environment variables (Vercel project settings)
 
@@ -102,7 +102,7 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 
 ## Go-live checklist
 
-1. Add the Adhkar PDF as exactly `adhkar/adhkar-book.pdf` (ideally under 5 MB) and set `BOOK_PDF_URL`. To replace the book later, overwrite that file and redeploy.
+1. The Adhkar PDF is at `adhkar/adhkar-book.pdf`. Set `BOOK_PDF_URL`. To replace the book later, overwrite that file and redeploy. Books over 10 MB are sent as a link only.
 2. Add Mandrill to the SPF record (see Mandrill above), check that Mandrill shows `adamfoundation.com` as verified, then set the mail variables.
 3. Add all environment variables in Vercel and redeploy.
 4. Make `connect.adamfoundation.com` the primary domain in Vercel. Its DNS record is already in place and serves over HTTPS. Set `business.adamfoundation.com` to redirect (308) to it in Vercel's domain settings.

@@ -1,10 +1,14 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { escapeHtml } from './request.js';
 
 // The book ships with the site. vercel.json bundles adhkar/ with the
 // book-request function so it can be attached without downloading it.
 const BOOK_FILE = 'adhkar/adhkar-book.pdf';
+
+// Attachments grow by a third when sent, and many inboxes refuse emails over
+// 20-25 MB, so larger books go out as the download link only.
+const MAX_ATTACH_BYTES = 10 * 1024 * 1024;
 
 // Sends through the Mandrill (Mailchimp Transactional) API. Returns the Mandrill
 // message id(s). Attachments are { type, name, content } with base64 content.
@@ -57,16 +61,18 @@ function parseAddress(value) {
 }
 
 async function pdfAttachment() {
-  const content = (await readFile(path.join(process.cwd(), BOOK_FILE))).toString('base64');
+  const file = path.join(process.cwd(), BOOK_FILE);
+  if ((await stat(file)).size > MAX_ATTACH_BYTES) return null;
+  const content = (await readFile(file)).toString('base64');
   return { type: 'application/pdf', name: 'Adhkar-Book.pdf', content };
 }
 
 const WHATSAPP = 'https://whatsapp.com/channel/0029Vb9M7AwG8l59M3Nk3L3J';
 const INSTAGRAM = 'https://www.instagram.com/theadamfdn/';
 
-// Attaches the bundled PDF and links to BOOK_PDF_URL. If the file can't be
-// read, the email still goes out with the link; with neither, it throws so
-// the request is marked failed and followed up by hand.
+// Attaches the bundled PDF (when small enough) and links to BOOK_PDF_URL. If
+// the file can't be attached, the email still goes out with the link; with
+// neither, it throws so the request is marked failed and followed up by hand.
 export async function bookEmail({ email, optIn }) {
   const pdfUrl = process.env.BOOK_PDF_URL;
   const attachment = process.env.BOOK_ATTACH_PDF !== 'false'
