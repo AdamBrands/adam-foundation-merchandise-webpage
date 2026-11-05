@@ -22,7 +22,7 @@ dialog{border:0;padding:0;border-radius:10px;width:min(700px,calc(100% - 28px));
 .pillar-follow{display:flex;flex-direction:column;align-items:flex-start;gap:8px}.pillar-follow .social-row{gap:6px}.pillar-follow span{font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:#d1b57f}.pillar-follow .social-row a{width:36px;height:36px}.pillar-follow .social-row svg{width:21px;height:21px}
 .stay{display:grid;grid-template-columns:1fr 170px;gap:40px;align-items:center;border-top:1px solid #ffffff30;padding-top:35px;margin-top:10px}.stay h3{font-size:30px}.stay .actions{margin:20px 0 0}.stay-qr{display:block;text-align:center;text-decoration:none;background:#fff;color:var(--navy);border-radius:10px;padding:14px 14px 10px;font-size:11px}.stay-qr img{display:block;width:132px;height:132px;max-width:100%;margin:0 auto 6px}
 .journey{display:flex;flex-direction:column;align-items:center;gap:14px;border-top:1px solid #ffffff30;margin-top:35px;padding-top:30px}.journey .eyebrow{margin:0}
-.footrow{align-items:center}.footer .social-row{gap:6px}.footer .social-row a{width:32px;height:32px;border-radius:6px}.footer .social-row svg{width:20px;height:20px}.footlinks{display:flex;gap:20px}
+.footrow{align-items:center}.footlinks{display:flex;gap:20px}
 .noscript{padding-top:20px;padding-bottom:20px}
 /* Forms: modern inline validation */
 .fields{gap:20px}.field{gap:7px}
