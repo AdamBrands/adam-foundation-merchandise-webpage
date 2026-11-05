@@ -12,9 +12,10 @@ const MAX_ATTACH_BYTES = 10 * 1024 * 1024;
 
 // Sends through the Mandrill (Mailchimp Transactional) API. Returns the Mandrill
 // message id(s). Attachments are { type, name, content } with base64 content.
+// replyTo overrides MAIL_REPLY_TO (team notifications reply to the visitor).
 // Open and click tracking are off: links stay as written and nobody is tracked
 // without having opted in.
-export async function sendEmail({ to, subject, html, text, attachments, tags }) {
+export async function sendEmail({ to, subject, html, text, attachments, tags, replyTo }) {
   const key = process.env.MANDRILL_API_KEY;
   if (!key) throw new Error('MANDRILL_API_KEY is not set');
   if (!process.env.MAIL_FROM) throw new Error('MAIL_FROM is not set');
@@ -30,7 +31,7 @@ export async function sendEmail({ to, subject, html, text, attachments, tags }) 
         from_email: from.email,
         from_name: from.name,
         to: (Array.isArray(to) ? to : [to]).map((email) => ({ email, type: 'to' })),
-        headers: process.env.MAIL_REPLY_TO ? { 'Reply-To': process.env.MAIL_REPLY_TO } : undefined,
+        headers: (replyTo || process.env.MAIL_REPLY_TO) ? { 'Reply-To': replyTo || process.env.MAIL_REPLY_TO } : undefined,
         subject,
         html,
         text,
@@ -70,13 +71,14 @@ async function pdfAttachment() {
   return { type: 'application/pdf', name: 'Adhkar-Book.pdf', content };
 }
 
-const WHATSAPP = 'https://whatsapp.com/channel/0029Vb9M7AwG8l59M3Nk3L3J';
-const INSTAGRAM = 'https://www.instagram.com/theadamfdn/';
+export const WHATSAPP = 'https://whatsapp.com/channel/0029Vb9M7AwG8l59M3Nk3L3J';
+export const INSTAGRAM = 'https://www.instagram.com/theadamfdn/';
 
 // Attaches the bundled PDF (when small enough) and links to BOOK_PDF_URL. If
 // the file can't be attached, the email still goes out with the link; with
 // neither, it throws so the request is marked failed and followed up by hand.
-export async function bookEmail({ email, optIn }) {
+// The Kawthar page passes the visitor's name, its own opt-in wording and a tag.
+export async function bookEmail({ email, optIn, name, optInText, tag = 'adhkar-book' }) {
   const pdfUrl = process.env.BOOK_PDF_URL;
   const attachment = process.env.BOOK_ATTACH_PDF !== 'false'
     ? await pdfAttachment().catch((err) => { console.error('book PDF attach failed', err); return null; })
@@ -84,10 +86,11 @@ export async function bookEmail({ email, optIn }) {
   const attach = Boolean(attachment);
   if (!attach && !pdfUrl) throw new Error('No book to send: PDF not attached and BOOK_PDF_URL is not set');
   const choice = optIn
-    ? 'You also asked to receive email updates about our news, events and campaigns. You can unsubscribe at any time.'
+    ? (optInText || 'You also asked to receive email updates about our news, events and campaigns.') + ' You can unsubscribe at any time.'
     : 'You did not sign up for marketing emails, so we will not send you any.';
 
   const text = [
+    ...(name ? [`Dear ${name},`, ''] : []),
     'Thank you for requesting your free Adhkar book from Adam Foundation.',
     '',
     attach ? `Your copy is attached to this email.${pdfUrl ? ' You can also download it here:' : ''}` : 'You can download your copy here:',
@@ -108,6 +111,7 @@ export async function bookEmail({ email, optIn }) {
 <tr><td style="padding:28px 28px 8px">
 <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;color:#0055a7">ADAM FOUNDATION</p>
 <h1 style="margin:0 0 16px;font-size:24px;line-height:1.25">Your free Adhkar book</h1>
+${name ? `<p style="margin:0 0 12px;font-size:15px;line-height:1.6">Dear ${escapeHtml(name)},</p>` : ''}
 <p style="margin:0 0 16px;font-size:15px;line-height:1.6">Thank you for requesting your free Adhkar book. ${attach ? 'Your copy is attached to this email.' : ''}</p>
 ${pdfUrl ? `<p style="margin:0 0 24px"><a href="${escapeHtml(pdfUrl)}" style="display:inline-block;background:#0055b8;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:3px;font-size:15px">Download the Adhkar book</a></p>` : ''}
 <p style="margin:0 0 8px;font-size:15px;line-height:1.6">Stay connected with us:</p>
@@ -123,6 +127,6 @@ You are receiving this email because ${escapeHtml(email)} was entered at connect
     html,
     text,
     attachments: attachment ? [attachment] : undefined,
-    tags: ['adhkar-book'],
+    tags: [tag],
   };
 }

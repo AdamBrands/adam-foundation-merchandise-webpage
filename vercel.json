@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["lhr1"],
   "functions": {
-    "api/book-request.js": { "includeFiles": "adhkar/**" }
+    "api/book-request.js": { "includeFiles": "adhkar/**" },
+    "api/kawthar.js": { "includeFiles": "adhkar/**" }
   },
   "rewrites": [
     { "source": "/q/:code", "destination": "/api/scan?code=:code" },
