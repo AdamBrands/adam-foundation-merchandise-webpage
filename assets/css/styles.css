@@ -113,3 +113,5 @@ body { margin: 0; background: #fff; }
 #af-discover .socials a{display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border-radius:8px}
 #af-discover .socials svg{display:block;width:24px;height:24px}
 #af-discover .socials a:hover svg{transform:translateY(-1px)}
+#af-discover .socials{flex-direction:column;align-items:center;gap:8px;margin-top:6px}
+#af-discover .journey-label{font:500 9px Arial,sans-serif;letter-spacing:1.7px;color:#0055a7;margin:0}
