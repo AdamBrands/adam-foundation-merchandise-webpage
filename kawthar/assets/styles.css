@@ -52,3 +52,26 @@ dialog{border:0;padding:0;border-radius:10px;width:min(700px,calc(100% - 28px));
 .privacy{font-size:12px;color:var(--muted);margin:14px 0 0}
 @media(max-width:850px){.stay{grid-template-columns:1fr 150px;gap:25px}}
 @media(max-width:600px){.brand img{height:42px}.brand small{font-size:6px;letter-spacing:1.4px;margin-top:6px}.stay{grid-template-columns:1fr}.stay-qr{max-width:180px}.footrow{flex-direction:column;align-items:flex-start;gap:14px}}
+/* ---- Mobile polish: fit 320px+, 44px tap targets, no iOS zoom on inputs ---- */
+.field input:not([type=checkbox]),.field select,.field textarea{font-size:16px}
+.navlinks .btn{white-space:nowrap}
+.stats strong{white-space:nowrap}.stats span{display:block;line-height:1.45;margin-top:4px}
+.product .caption span{font-size:11px}
+@media(max-width:850px){
+.card details{padding-top:4px}.card summary{display:flex;align-items:center;min-height:44px}
+.faqs details{padding:6px 0}.faqs summary{display:flex;align-items:center;min-height:44px;padding:8px 0}.faqs p{margin-top:6px;padding-bottom:10px}
+.source{display:inline-flex;align-items:center;min-height:44px}
+.pillar-link{display:inline-flex;align-items:center;min-height:44px;margin-bottom:6px}
+.social-row a,.pillar-follow .social-row a{width:44px;height:44px}.pillar-follow .social-row svg{width:24px;height:24px}
+.footlinks a{display:inline-flex;align-items:center;min-height:44px}
+.close{width:44px;height:44px}.navlinks .btn{min-height:44px}
+}
+@media(max-width:600px){
+.goal-heading{flex-direction:column;align-items:flex-start;gap:6px}.goal-heading strong{white-space:normal}
+.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stats strong{font-size:clamp(20px,6.6vw,28px)}
+.footrow{gap:4px}
+dialog{width:calc(100% - 16px);max-height:calc(100dvh - 16px)}dialog .modal{padding:20px 18px 24px}
+.modal .actions .btn{flex:1 1 100%}.review{padding:16px}
+}
+@media(max-width:480px){.book{grid-template-columns:1fr;gap:18px}.bookcover{width:74px}.book .btn{grid-column:auto}}
+@media(max-width:380px){.brand small{letter-spacing:.9px}.navlinks .btn{padding:9px 10px;font-size:11px}.hero h1{font-size:46px}.stats strong{font-size:19px}}
