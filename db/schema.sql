@@ -48,3 +48,32 @@ create policy connect_writer_scans on public.scans
   for all to connect_writer using (true) with check (true);
 create policy connect_writer_book_requests on public.book_requests
   for all to connect_writer using (true) with check (true);
+
+-- Kawthar page (/kawthar): mosque bottle applications, support offers and
+-- adhkar book requests. Added November 2026. Same access pattern as above.
+create table public.kawthar_submissions (
+  id                bigint generated always as identity primary key,
+  form              text        not null check (form in ('mosque', 'support', 'book')),
+  name              text        not null check (char_length(name) between 1 and 100),
+  email             text        not null check (char_length(email) between 3 and 254),
+  data              jsonb       not null, -- every validated answer, as submitted
+  marketing_opt_in  boolean     not null default false,
+  consent_text      text        not null, -- exact checkbox wording shown
+  consent_version   text        not null,
+  source            text        not null default 'kawthar' check (source ~ '^[a-z0-9-]{1,40}$'),
+  device            text        not null check (device in ('ios', 'android', 'other')),
+  is_test           boolean     not null default false,
+  email_status      text        not null default 'pending'
+                    check (email_status in ('pending', 'sent', 'partial', 'failed', 'duplicate')),
+  email_id          text,
+  email_error       text,
+  created_at        timestamptz not null default now()
+);
+create index kawthar_submissions_form_email_created_at_idx on public.kawthar_submissions (form, lower(email), created_at);
+create index kawthar_submissions_created_at_idx on public.kawthar_submissions (created_at);
+
+alter table public.kawthar_submissions enable row level security;
+revoke all on public.kawthar_submissions from anon, authenticated;
+grant select, insert, update on public.kawthar_submissions to connect_writer;
+create policy connect_writer_kawthar_submissions on public.kawthar_submissions
+  for all to connect_writer using (true) with check (true);

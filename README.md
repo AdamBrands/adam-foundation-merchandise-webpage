@@ -7,6 +7,7 @@ The page is static HTML and CSS with no framework or build step. A few Vercel Fu
 - `/q/<code>` records a QR scan.
 - `/api/book-request` stores an Adhkar book request and emails the book.
 - `/report` shows scans, requests and opt-ins by QR code.
+- `/kawthar` is the Kawthar campaign page. `/api/kawthar` receives its three forms (see [Kawthar page](#kawthar-page)).
 
 Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactional), using the Foundation's existing account.
 
@@ -22,7 +23,9 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `api/cron/weekly-report.js`: Monday email with the weekly summary and a CSV of all requests.
 - `api/cron/keepalive.js`: daily query that stops the free Supabase project pausing.
 - `api/_lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes. The underscore keeps this folder private: Vercel neither publishes it nor turns it into web addresses.
-- `db/schema.sql`: database tables, row-level security and the `connect_writer` role. Already applied.
+- `kawthar/`: the Kawthar campaign page (`index.html`, `assets/styles.css`, `assets/app.js`) and `assets/forms.js`, the form fields and validation rules shared by the page and `api/kawthar.js`.
+- `api/kawthar.js`: validates and stores Kawthar form submissions, emails the person and the team. Emails are built in `api/_lib/kawthar-email.js`.
+- `db/schema.sql`: database tables, row-level security and the `connect_writer` role.
 - `adhkar/adhkar-book.pdf`: the book ("Daily Adhkar", 82 pages), published at `/adhkar/adhkar-book.pdf`. It's a lighter copy of the designer's print file "ADHKAR BOOK (Perfect bound) version 2.pdf". Only the background images are recompressed, and the text and artwork are unchanged (23 MB instead of 27 MB).
 - `vercel.json`: `/q/:code` and `/report` rewrites, the London function region, the PDF bundling and the two crons.
 - `links.json`: reference list of outbound links (documentation only).
@@ -98,6 +101,7 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 | `REPORT_PASSWORD` | Password for `/report` |
 | `REPORT_USER` | Optional, defaults to `adam` |
 | `REPORT_EMAIL_TO` | Comma-separated recipients of the weekly report |
+| `KAWTHAR_NOTIFY_TO` | Optional. Who receives Kawthar form notifications, comma-separated. Defaults to `info@adamfoundation.com`. |
 | `CRON_SECRET` | Random string. Vercel sends it to the cron functions automatically. |
 
 ## Go-live checklist
@@ -114,6 +118,28 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
    - Tap every social and WhatsApp link.
    - Check each scan and request appears under the right source in `/report`.
 7. Delete the test rows, or leave them, since `test` is excluded from reports.
+
+## Kawthar page
+
+The Kawthar campaign page (COP31 launch, reusable bottles for UK mosques this Ramadan) lives at `/kawthar`, separate from the connect page at `/`. It was ported from the comms team's skin (handover dated 5 November 2026) and has three forms in a modal:
+
+| Form | Person receives | Team receives |
+|---|---|---|
+| Mosque bottle application | A copy of their application. Applications are reviewed, so there's no guaranteed allocation. | Notification with every answer |
+| Support offer | A copy of their offer. No payment and no binding pledge. | Notification with every answer |
+| Digital adhkar book | The Adhkar book email (same book as the connect page) | Notification |
+
+- Validation rules live once, in `kawthar/assets/forms.js`. The page applies them as people type and before the review step, with an error summary and inline messages. `api/kawthar.js` applies the same rules again.
+- Every valid submission is stored in `kawthar_submissions`: the answers as JSON, the marketing choice, the exact checkbox wording and `KAWTHAR_CONSENT_VERSION`, the source, the device and the email status. A failed email never loses the submission.
+  - `sent`: both emails went.
+  - `partial`: one email failed. See `email_error`.
+  - `failed`: neither email went.
+  - `duplicate`: same form and address within 10 minutes. Not re-sent.
+- Team notifications go to `KAWTHAR_NOTIFY_TO` (default `info@adamfoundation.com`), with Reply-To set to the visitor.
+- A hidden honeypot field (`nickname`) catches simple bots.
+- `?src=<code>` on the page is stored as the source (default `kawthar`). `?src=test` marks a submission as a test.
+- If you change the marketing checkbox wording (`UPDATES_LABEL` in `forms.js`), bump `KAWTHAR_CONSENT_VERSION` in `api/_lib/consent.js`.
+- Kawthar submissions are not in `/report` or the weekly CSV yet.
 
 ## Design notes
 
