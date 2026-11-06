@@ -77,3 +77,16 @@ revoke all on public.kawthar_submissions from anon, authenticated;
 grant select, insert, update on public.kawthar_submissions to connect_writer;
 create policy connect_writer_kawthar_submissions on public.kawthar_submissions
   for all to connect_writer using (true) with check (true);
+
+-- Kawthar donations through Stripe Checkout (support form, "Fund additional
+-- bottles"). Added November 2026. payment_status is 'none' for submissions
+-- that don't pay; api/stripe-webhook.js moves donations to 'paid'.
+alter table public.kawthar_submissions
+  add column payment_status text not null default 'none'
+    check (payment_status in ('none', 'pending', 'processing', 'paid', 'failed', 'expired', 'error')),
+  add column amount_pence integer check (amount_pence is null or amount_pence > 0),
+  add column stripe_session_id text,
+  add column stripe_payment_intent text,
+  add column paid_at timestamptz;
+create unique index kawthar_submissions_stripe_session_idx on public.kawthar_submissions (stripe_session_id)
+  where stripe_session_id is not null;

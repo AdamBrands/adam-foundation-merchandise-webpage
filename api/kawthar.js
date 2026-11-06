@@ -3,7 +3,8 @@ import { bookEmail, sendEmail } from './_lib/email.js';
 import { confirmationEmail, notificationEmail } from './_lib/kawthar-email.js';
 import { KAWTHAR_CONSENT_VERSION } from './_lib/consent.js';
 import { cleanCode, deviceFrom } from './_lib/request.js';
-import { FORMS, UPDATES_LABEL, validate } from '../kawthar/assets/forms.js';
+import { createDonationSession, formatGBP, paymentsEnabled, stripeClient, testMode, toPence } from './_lib/stripe.js';
+import { FORMS, UPDATES_LABEL, isDonation, validate } from '../kawthar/assets/forms.js';
 
 const MAX_BODY = 32 * 1024;
 
@@ -13,6 +14,11 @@ const MAX_BODY = 32 * 1024;
 // is stored in kawthar_submissions, then the person gets a copy (or the book)
 // and the team gets a notification. A repeat of the same form from the same
 // address within 10 minutes is stored as "duplicate" and not re-sent.
+//
+// Donations (support form, "Fund additional bottles", while STRIPE_SECRET_KEY
+// is set) are stored with payment_status "pending" and the visitor is sent to
+// Stripe Checkout. No email goes out here: api/stripe-webhook.js sends the
+// receipt and the team notification once Stripe confirms the payment.
 export async function POST(request) {
   const reply = (status, body) => Response.json({ ok: status < 400, ...body }, {
     status,
@@ -38,13 +44,16 @@ export async function POST(request) {
   if (payload.nickname) return reply(200, { message: FORMS[form].success });
 
   const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
-  const { values, errors } = validate(form, data);
+  const payments = paymentsEnabled();
+  const { values, errors } = validate(form, data, { payments });
   if (Object.keys(errors).length) {
     return reply(422, { message: 'Please correct the highlighted answers.', errors });
   }
 
   const source = cleanCode(payload.source) || 'kawthar';
   const optIn = values.updates === true;
+
+  if (isDonation(form, values, payments)) return startDonation({ request, reply, values, source, optIn });
 
   let id;
   let duplicate;
@@ -119,4 +128,61 @@ function successMessage(form, values, emailed) {
   return emailed
     ? `${FORMS[form].success}`
     : `Thank you. We’ve received ${what}, but couldn’t email you a copy just now. Our team has your details and will be in touch.`;
+}
+
+// Stores the offer as a pending donation and opens a Stripe Checkout session.
+async function startDonation({ request, reply, values, source, optIn }) {
+  let id;
+  try {
+    [{ id }] = await sql`
+      insert into kawthar_submissions
+        (form, name, email, data, marketing_opt_in, consent_text, consent_version, source, device, is_test,
+         email_status, payment_status, amount_pence)
+      values
+        ('support', ${values.name}, ${values.email}, ${sql.json(values)}, ${optIn}, ${UPDATES_LABEL},
+         ${KAWTHAR_CONSENT_VERSION}, ${source}, ${deviceFrom(request)}, ${source === 'test' || testMode()},
+         'pending', 'pending', ${toPence(values.amount)})
+      returning id`;
+  } catch (err) {
+    console.error('kawthar donation insert failed', err);
+    return reply(503, { message: 'We couldn’t start your donation just now. Please try again in a moment. Nothing you entered has been lost.' });
+  }
+
+  try {
+    const session = await createDonationSession({ id, values, source, origin: new URL(request.url).origin });
+    await sql`update kawthar_submissions set stripe_session_id = ${session.id} where id = ${id}`;
+    return reply(200, { checkoutUrl: session.url });
+  } catch (err) {
+    console.error('stripe checkout session failed', err);
+    await sql`
+      update kawthar_submissions set payment_status = 'error', email_error = ${String(err.message).slice(0, 500)}
+      where id = ${id}`.catch((e) => console.error('status update failed', e));
+    return reply(503, { message: 'We couldn’t open the secure payment page just now. Please try again in a moment. Nothing has been charged.' });
+  }
+}
+
+// GET /api/kawthar tells the page whether online donations are on.
+// GET /api/kawthar?session_id=cs_… reports a donation's status for the
+// thank-you screen after Stripe Checkout (amount and status only).
+export async function GET(request) {
+  const headers = { 'Cache-Control': 'no-store' };
+  const sessionId = new URL(request.url).searchParams.get('session_id');
+  if (!sessionId) return Response.json({ payments: paymentsEnabled(), testMode: paymentsEnabled() && testMode() }, { headers });
+
+  if (!paymentsEnabled() || !/^cs_(test|live)_[A-Za-z0-9]{10,200}$/.test(sessionId)) {
+    return Response.json({ ok: false }, { status: 404, headers });
+  }
+  try {
+    const session = await stripeClient().checkout.sessions.retrieve(sessionId);
+    if (session.metadata?.form !== 'support') return Response.json({ ok: false }, { status: 404, headers });
+    return Response.json({
+      ok: true,
+      paid: session.payment_status !== 'unpaid',
+      status: session.status,
+      amount: formatGBP(session.amount_total ?? 0),
+    }, { headers });
+  } catch (err) {
+    console.error('stripe session lookup failed', err.message);
+    return Response.json({ ok: false }, { status: 404, headers });
+  }
 }

@@ -4,7 +4,7 @@
 // Validation feel: a field is only marked wrong once the person has left it
 // (or pressed Review), but it turns green as soon as it is right, and once
 // marked, its message updates live as they type.
-import { FORMS, validate, checkField, isActive } from './forms.js';
+import { FORMS, validate, checkField, isActive, isDonation, paymentField } from './forms.js';
 
 const modal = document.querySelector('#flow');
 const body = document.querySelector('#form-body');
@@ -33,6 +33,14 @@ let form;
 let touched;
 let sending = false;
 
+// Online donations are on when the server has Stripe keys (GET /api/kawthar).
+// Until we hear back, or if the check fails, the form works without them.
+let payments = false;
+const paymentsReady = fetch('/api/kawthar', { headers: { Accept: 'application/json' } })
+  .then((r) => (r.ok ? r.json() : {}))
+  .then((d) => { payments = Boolean(d.payments); })
+  .catch(() => {});
+
 function node(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -40,14 +48,20 @@ function node(tag, cls, text) {
   return e;
 }
 
-const fieldOf = (name) => config.fields.find((f) => f.name === name);
+const fieldOf = (name) => {
+  const field = config.fields.find((f) => f.name === name);
+  return field && paymentField(field, payments, readValues());
+};
 const boxOf = (name) => form.querySelector(`[data-field="${name}"]`);
 const valueOf = (field) => {
   const input = form.elements[field.name];
   return field.kind === 'checkbox' ? input.checked : input.value;
 };
 
-function buildField(field) {
+function buildField(baseField) {
+  // Built with the donation version of fields that have one (labels are
+  // switched back by syncDonation when another way of helping is chosen).
+  const field = paymentField(baseField, payments, { type: 'Fund additional bottles' });
   const wide = field.full || field.kind === 'longtext' || field.kind === 'checkbox';
   const box = node('div', `${wide ? 'full ' : ''}field`);
   box.dataset.field = field.name;
@@ -98,11 +112,31 @@ function buildField(field) {
   // Long answers get a live character count; email gets typo suggestions.
   if (field.kind === 'longtext') {
     const meta = node('div', 'field-meta');
-    if (field.min) meta.append(node('span', '', `At least ${field.min} characters`));
+    if (baseField.min) meta.append(node('span', 'min-hint', `At least ${baseField.min} characters`));
     const counter = node('span', 'counter', `0 / ${field.max.toLocaleString('en-GB')}`);
     counter.setAttribute('aria-hidden', 'true');
     meta.append(counter);
     box.append(meta);
+  }
+  if (field.kind === 'money' && field.presets) {
+    const presets = node('div', 'presets');
+    presets.setAttribute('role', 'group');
+    presets.setAttribute('aria-label', 'Suggested amounts');
+    field.presets.forEach((amount) => {
+      const chip = node('button', 'preset', `£${amount}`);
+      chip.type = 'button';
+      chip.addEventListener('click', () => {
+        input.value = String(amount);
+        presets.querySelectorAll('.preset').forEach((c) => c.classList.toggle('on', c === chip));
+        touched.add(field.name);
+        evaluate(field.name);
+      });
+      presets.append(chip);
+    });
+    input.addEventListener('input', () => {
+      presets.querySelectorAll('.preset').forEach((c) => c.classList.toggle('on', c.textContent === `£${input.value.trim()}`));
+    });
+    box.insertBefore(presets, input);
   }
   if (field.kind === 'email') {
     const suggest = node('div', 'suggest');
@@ -234,7 +268,23 @@ function showErrors(errors) {
   input.focus({ preventScroll: true });
 }
 
+// Switches the support form between donating and other offers: the amount
+// field appears, and fields with a donation version (amount, offer) take
+// that version's label, required marker and length hint.
 function syncAmount() {
+  const raw = readValues();
+  config.fields.filter((f) => f.payment).forEach((base) => {
+    const f = paymentField(base, payments, raw);
+    const box = boxOf(f.name);
+    const input = form.elements[f.name];
+    box.querySelector('label').textContent = f.label + (f.required ? ' *' : '');
+    if (f.required) input.setAttribute('aria-required', 'true');
+    else input.removeAttribute('aria-required');
+    const hint = box.querySelector('.min-hint');
+    if (hint) hint.hidden = !f.min;
+    if (f.kind === 'longtext') updateCounter(f.name);
+    if (touched.has(f.name) || box.classList.contains('is-invalid')) evaluate(f.name);
+  });
   const field = config.fields.find((f) => f.showIf);
   if (!field) return;
   const show = isActive(field, readValues());
@@ -250,7 +300,7 @@ function openFlow(formKey, trigger) {
   touched = new Set();
   sending = false;
   document.querySelector('#form-title').textContent = config.title;
-  document.querySelector('#form-intro').textContent = config.intro;
+  document.querySelector('#form-intro').textContent = (payments && config.introPayments) || config.intro;
   body.replaceChildren();
 
   form = node('form');
@@ -283,7 +333,7 @@ function openFlow(formKey, trigger) {
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    const { errors } = validate(key, readValues());
+    const { errors } = validate(key, readValues(), { payments });
     if (Object.keys(errors).length) showErrors(errors);
     else showReview();
   });
@@ -333,25 +383,29 @@ function display(field, value) {
 }
 
 function showReview() {
-  const { values } = validate(key, readValues());
+  const { values } = validate(key, readValues(), { payments });
   form.hidden = true;
   const review = node('div', 'review');
   const heading = node('h3', '', 'Review your details');
   heading.tabIndex = -1;
   const dl = node('dl');
-  config.fields.forEach((field) => {
+  config.fields.forEach((base) => {
+    const field = paymentField(base, payments, values);
     if (!(field.name in values)) return;
     dl.append(node('dt', '', field.label), node('dd', '', display(field, values[field.name])));
   });
+  const donating = isDonation(key, values, payments);
+  const payNote = node('p', 'pay-note', 'You’ll donate on a secure page run by Stripe. We never see your card details.');
+  payNote.hidden = !donating;
   const alert = node('div', 'form-alert');
   alert.setAttribute('role', 'alert');
   const actions = node('div', 'actions');
   const back = node('button', 'btn outline', 'Edit details');
-  const confirm = node('button', 'btn', key === 'book' ? 'Email me the book' : 'Confirm and send');
+  const confirm = node('button', 'btn', donating ? 'Continue to secure payment →' : key === 'book' ? 'Email me the book' : 'Confirm and send');
   back.type = 'button';
   confirm.type = 'button';
   actions.append(back, confirm);
-  review.append(heading, dl, alert, actions);
+  review.append(heading, dl, payNote, alert, actions);
   body.append(review);
   heading.focus();
 
@@ -386,6 +440,11 @@ async function submit({ review, alert, back, confirm }) {
   }
   sending = false;
 
+  if (res?.ok && data.ok && data.checkoutUrl) {
+    confirm.textContent = 'Opening secure payment…';
+    location.assign(data.checkoutUrl);
+    return;
+  }
   if (res?.ok && data.ok) return showSuccess(data.message);
 
   confirm.disabled = false;
@@ -415,7 +474,70 @@ function showSuccess(message) {
   h.focus();
 }
 
-document.querySelectorAll('[data-open]').forEach((btn) => btn.addEventListener('click', () => openFlow(btn.dataset.open, btn)));
+document.querySelectorAll('[data-open]').forEach((btn) => btn.addEventListener('click', async () => {
+  // The config check is quick; wait for it (at most 1.5s) so the support
+  // form shows the right amount field.
+  await Promise.race([paymentsReady, new Promise((r) => setTimeout(r, 1500))]);
+  openFlow(btn.dataset.open, btn);
+}));
+
+paymentsReady.then(() => {
+  if (!payments) return;
+  document.querySelectorAll('[data-payments-text]').forEach((el) => { el.textContent = el.dataset.paymentsText; });
+});
+
+// Back from Stripe Checkout: ?donation=success&session_id=… or ?donation=cancelled.
+// This screen only reports; the donation is recorded by the Stripe webhook.
+function showDonationReturn() {
+  const params = new URLSearchParams(location.search);
+  const outcome = params.get('donation');
+  if (outcome !== 'success' && outcome !== 'cancelled') return;
+  const sessionId = params.get('session_id');
+  params.delete('donation');
+  params.delete('session_id');
+  history.replaceState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
+
+  opener = null;
+  form = null;
+  config = null;
+  document.querySelector('#form-title').textContent = outcome === 'success' ? 'Your donation' : 'Payment cancelled';
+  document.querySelector('#form-intro').textContent = '';
+  body.replaceChildren();
+  const box = node('div', 'success');
+  const h = node('h3', '', outcome === 'success' ? 'Thank you for your donation' : 'No payment was taken');
+  h.tabIndex = -1;
+  const text = node('p', '', outcome === 'success'
+    ? 'We’re confirming your payment with Stripe. A receipt is on its way to your inbox.'
+    : 'You left the secure payment page before donating, so nothing has been charged. You can try again whenever you’re ready.');
+  const actions = node('div', 'actions');
+  const done = node('button', 'btn', 'Return to the campaign');
+  done.type = 'button';
+  done.onclick = () => modal.close();
+  actions.append(done);
+  if (outcome === 'cancelled') {
+    const retry = node('button', 'btn outline', 'Try again');
+    retry.type = 'button';
+    retry.onclick = () => { modal.close(); setTimeout(() => document.querySelector('[data-open="support"]').click(), 0); };
+    actions.append(retry);
+  }
+  box.append(node('div', 'tick', outcome === 'success' ? '✓' : '↺'), h, text, actions);
+  body.append(box);
+  modal.showModal();
+  h.focus();
+
+  if (outcome === 'success' && sessionId) {
+    fetch(`/api/kawthar?session_id=${encodeURIComponent(sessionId)}`, { headers: { Accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.ok) return;
+        text.textContent = d.paid
+          ? `Your donation of ${d.amount} has been received. A receipt is on its way to your inbox. Thank you for helping Kawthar reach further.`
+          : `Your donation of ${d.amount} is being processed. We’ll email your receipt as soon as it’s confirmed.`;
+      })
+      .catch(() => {});
+  }
+}
+showDonationReturn();
 document.querySelector('.close').onclick = () => modal.close();
 modal.addEventListener('click', (event) => {
   if (event.target !== modal) return;

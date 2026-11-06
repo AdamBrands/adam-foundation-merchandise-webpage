@@ -18,6 +18,7 @@ const FUND = 'Fund additional bottles';
 //   min/max  length for text, value for numbers
 //   options  for selects
 //   showIf   { field, equals }: the field only exists when another has that value
+//   payment  overrides used when online payments are on (see paymentField)
 //   full     spans both columns in the two-column layout
 export const FORMS = {
   mosque: {
@@ -49,6 +50,7 @@ export const FORMS = {
   support: {
     title: 'Help us reach 100,000',
     intro: 'Tell us how you would like to contribute. This is an expression of interest, not a payment or binding pledge. Fields marked * are required.',
+    introPayments: 'Tell us how you would like to contribute. Choosing to fund bottles takes you to a secure Stripe page to donate; other offers are an expression of interest. Fields marked * are required.',
     success: 'Thank you for offering your support. We’ve emailed you a copy and our team will be in touch to discuss it. No money has been taken and no pledge has been recorded.',
     fields: [
       { name: 'who', label: 'I am enquiring as', kind: 'select', required: true, noun: 'who you are enquiring as',
@@ -60,8 +62,11 @@ export const FORMS = {
       { name: 'type', label: 'How would you like to help?', kind: 'select', required: true, noun: 'how you would like to help',
         options: [FUND, 'Support drinking-water refills', 'Help with distribution or logistics', 'Volunteer time or skills', 'Discuss another contribution'] },
       { name: 'amount', label: 'Indicative contribution in GBP (optional)', kind: 'money', required: false, noun: 'an amount', min: 1, max: 1000000,
-        showIf: { field: 'type', equals: FUND } },
-      { name: 'offer', label: 'Tell us about the support you can offer', kind: 'longtext', required: true, noun: 'the support you can offer', min: 20, max: 2000, full: true },
+        showIf: { field: 'type', equals: FUND },
+        // When online payments are on, this is the donation taken by Stripe.
+        payment: { label: 'Indicative contribution in GBP', noun: 'an amount', required: true, min: 1, max: 10000, presets: [10, 25, 50, 100] } },
+      { name: 'offer', label: 'Tell us about the support you can offer', kind: 'longtext', required: true, noun: 'the support you can offer', min: 20, max: 2000, full: true,
+        payment: { label: 'Message to our team (optional)', noun: 'your message', required: false, min: 0 } },
       { name: 'contact', label: 'I agree to be contacted about this offer of support.', kind: 'checkbox', required: true,
         message: 'Agree to be contacted about your offer, so we can discuss it with you' },
       { name: 'updates', label: UPDATES_LABEL, kind: 'checkbox', required: false },
@@ -91,6 +96,22 @@ const POSTCODE_RE = /^(GIR ?0AA|[A-PR-UWYZ][A-HK-Y]?[0-9][0-9A-HJKMNPR-Y]? ?[0-9
 const asText = (value) => (value == null ? '' : String(value)).replace(/\r\n?/g, '\n').trim();
 const isChecked = (value) => value === true || value === 'true' || value === 'on' || value === 'yes';
 const plural = (n) => Number(n).toLocaleString('en-GB');
+
+export const FUND_OPTION = FUND;
+
+// Whether this submission pays online: a support offer to fund bottles,
+// while payments are switched on (STRIPE_SECRET_KEY set on the server).
+export function isDonation(formKey, raw, payments) {
+  return Boolean(payments) && formKey === 'support' && String(raw?.type ?? '').trim() === FUND;
+}
+
+// The field as it applies right now. While someone is donating (payments on
+// and "Fund additional bottles" chosen), the amount becomes a required
+// donation and the offer becomes an optional message.
+export function paymentField(field, payments, raw) {
+  if (!payments || !field.payment || String(raw?.type ?? '').trim() !== FUND) return field;
+  return { ...field, ...field.payment };
+}
 
 // Whether a conditional field currently applies (e.g. amount only for funding).
 export function isActive(field, raw) {
@@ -191,16 +212,17 @@ export function checkField(field, rawValue) {
 }
 
 // Validates a whole form. `raw` is a plain object of field name to value.
+// Pass { payments: true } when online payments are on.
 // Returns { values, errors }: values holds only known, active fields, and
 // errors maps field name to message (empty when the form is valid).
-export function validate(formKey, raw) {
+export function validate(formKey, raw, { payments = false } = {}) {
   const form = FORMS[formKey];
   if (!form) return { values: {}, errors: { form: 'Unknown form' } };
   const values = {};
   const errors = {};
   for (const field of form.fields) {
     if (!isActive(field, raw)) continue;
-    const result = checkField(field, raw?.[field.name]);
+    const result = checkField(paymentField(field, payments, raw), raw?.[field.name]);
     if (result.error) errors[field.name] = result.error;
     else values[field.name] = result.value;
   }

@@ -152,3 +152,54 @@ export function notificationEmail({ form, values, id, source, personEmailed }) {
     tags: ['kawthar-notify'],
   };
 }
+
+// Sent by api/stripe-webhook.js once Stripe confirms a donation.
+export function donationEmails({ submission, amount, reference }) {
+  const values = submission.data;
+  const optIn = submission.marketing_opt_in;
+  const list = rows('support', values).filter(([k]) => !/^Indicative contribution/.test(k));
+  const choice = optIn
+    ? 'You also asked to receive email news from Adam Foundation. You can unsubscribe at any time.'
+    : 'You did not sign up for marketing emails, so we will not send you any.';
+  const socialsHtml = SOCIALS.map(([n, u]) => `<a href="${u}" style="color:#264f70">${n}</a>`).join(' · ');
+  const summary = [['Donation', amount], ['Payment reference', reference], ['Paid', new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'long', timeStyle: 'short' })]];
+
+  const receiptHtml = layout({
+    heading: 'Thank you for your donation',
+    intro: para(`Dear ${escapeHtml(values.name)},`)
+      + para(`Thank you for donating <strong>${escapeHtml(amount)}</strong> to help fund reusable Kawthar bottles for UK mosques this Ramadan. Your gift helps us move from our first 10,000 bottles towards our shared goal of 100,000.`)
+      + para('Our team will also be in touch about the support you described.'),
+    inner: `${tableHtml(summary)}
+<p style="margin:8px 0 8px;font-size:13px;font-weight:bold;color:#122d45">Your details</p>${tableHtml(list)}
+${para('Please keep this email as a record of your donation. If anything needs correcting, just reply to it.')}
+<p style="margin:0 0 6px;font-size:15px;line-height:1.6">Stay connected with us:</p>
+<p style="margin:0 0 24px;font-size:14px;line-height:1.8">${socialsHtml}</p>`,
+    footer: `You are receiving this email because ${escapeHtml(values.email)} made a donation at ${PAGE}. ${choice}`,
+  });
+  const receiptText = [
+    `Dear ${values.name},`, '',
+    `Thank you for donating ${amount} to help fund reusable Kawthar bottles for UK mosques this Ramadan.`, '',
+    tableText(summary), '', 'Your details', tableText(list), '',
+    'Please keep this email as a record of your donation.', '',
+    'Stay connected:', ...SOCIALS.map(([n, u]) => `${n}: ${u}`), '',
+    `You are receiving this email because ${values.email} made a donation at ${PAGE}. ${choice}`, '', 'Adam Foundation',
+  ].join('\n');
+
+  const meta = [['Donation', amount], ['Payment reference', reference], ['Source', submission.source], ['Reference', `kawthar_submissions #${submission.id}`]];
+  const notifyHtml = layout({
+    heading: `New donation: ${escapeHtml(amount)}`,
+    intro: para(`${escapeHtml(values.name)} (<a href="mailto:${escapeHtml(values.email)}" style="color:#264f70">${escapeHtml(values.email)}</a>) donated ${escapeHtml(amount)} through Stripe on the Kawthar page. Reply to this email to answer them directly.`),
+    inner: tableHtml(meta) + tableHtml(list),
+    footer: `Sent automatically from ${PAGE}. Marketing consent: ${optIn ? 'opted in' : 'not given'}.`,
+  });
+  const notifyText = [`New Kawthar donation: ${amount}`, '', tableText(meta), '', tableText(list)].join('\n');
+
+  return {
+    receipt: { to: values.email, subject: `Thank you for your ${amount} Kawthar donation`, html: receiptHtml, text: receiptText, tags: ['kawthar-donation'] },
+    notify: {
+      to: notifyRecipients(), replyTo: values.email,
+      subject: `Kawthar donation: ${amount} from ${values.name}${values.org ? ` (${values.org})` : ''}`.slice(0, 180),
+      html: notifyHtml, text: notifyText, tags: ['kawthar-notify'],
+    },
+  };
+}

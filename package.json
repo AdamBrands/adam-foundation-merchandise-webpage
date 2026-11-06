@@ -6,6 +6,7 @@
     "node": "24.x"
   },
   "dependencies": {
-    "postgres": "3.4.9"
+    "postgres": "3.4.9",
+    "stripe": "23.1.0"
   }
 }
