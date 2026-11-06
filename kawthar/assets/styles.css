@@ -16,10 +16,10 @@ dialog{border:0;padding:0;border-radius:10px;width:min(700px,calc(100% - 28px));
 /* ---- Added for connect.adamfoundation.com/kawthar: logo, social media, live forms ---- */
 .icon-sprite{position:absolute;width:0;height:0;overflow:hidden}
 .brand{display:block;line-height:0}.brand img{display:block;height:58px;width:auto}.brand small{display:block;margin-top:8px;line-height:1.4;font-size:8px;letter-spacing:2px;font-weight:400;white-space:nowrap}
-.social-row{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}.social-row a{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:8px;background:#fff;transition:transform .15s}.social-row a:hover{transform:translateY(-1px)}.social-row svg{display:block;width:24px;height:24px}
-.dark .social-row a{background:var(--cream)}
+.social-row{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}.social-row a{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:8px;color:var(--ink);transition:transform .15s}.social-row a:hover{transform:translateY(-1px)}.social-row svg{display:block;width:28px;height:28px}
+.dark .social-row a{color:var(--cream)}
 .pillar{display:flex;flex-direction:column;align-items:flex-start}.pillar-link{display:inline-block;margin:auto 0 16px;font-size:13px;color:#e1c592;text-underline-offset:4px}
-.pillar-follow{display:flex;flex-direction:column;align-items:flex-start;gap:8px}.pillar-follow .social-row{gap:6px}.pillar-follow span{font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:#d1b57f}.pillar-follow .social-row a{width:36px;height:36px}.pillar-follow .social-row svg{width:21px;height:21px}
+.pillar-follow{display:flex;flex-direction:column;align-items:flex-start;gap:8px}.pillar-follow .social-row{gap:6px}.pillar-follow span{font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:#d1b57f}.pillar-follow .social-row a{width:36px;height:36px}.pillar-follow .social-row svg{width:26px;height:26px}
 .stay{display:grid;grid-template-columns:1fr 170px;gap:40px;align-items:center;border-top:1px solid #ffffff30;padding-top:35px;margin-top:10px}.stay h3{font-size:30px}.stay .actions{margin:20px 0 0}.stay-qr{display:block;text-align:center;text-decoration:none;background:#fff;color:var(--navy);border-radius:10px;padding:14px 14px 10px;font-size:11px}.stay-qr img{display:block;width:132px;height:132px;max-width:100%;margin:0 auto 6px}
 .journey{display:flex;flex-direction:column;align-items:center;gap:14px;border-top:1px solid #ffffff30;margin-top:35px;padding-top:30px}.journey .eyebrow{margin:0}
 .footrow{align-items:center}.footlinks{display:flex;gap:20px}
@@ -62,7 +62,7 @@ dialog{border:0;padding:0;border-radius:10px;width:min(700px,calc(100% - 28px));
 .faqs details{padding:6px 0}.faqs summary{display:flex;align-items:center;min-height:44px;padding:8px 0}.faqs p{margin-top:6px;padding-bottom:10px}
 .source{display:inline-flex;align-items:center;min-height:44px}
 .pillar-link{display:inline-flex;align-items:center;min-height:44px;margin-bottom:6px}
-.social-row a,.pillar-follow .social-row a{width:44px;height:44px}.pillar-follow .social-row svg{width:24px;height:24px}
+.social-row a,.pillar-follow .social-row a{width:44px;height:44px}.pillar-follow .social-row svg{width:28px;height:28px}
 .footlinks a{display:inline-flex;align-items:center;min-height:44px}
 .close{width:44px;height:44px}.navlinks .btn{min-height:44px}
 }
