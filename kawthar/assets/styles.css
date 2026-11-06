@@ -75,3 +75,7 @@ dialog{width:calc(100% - 16px);max-height:calc(100dvh - 16px)}dialog .modal{padd
 }
 @media(max-width:480px){.book{grid-template-columns:1fr;gap:18px}.bookcover{width:74px}.book .btn{grid-column:auto}}
 @media(max-width:380px){.brand small{letter-spacing:.9px}.navlinks .btn{padding:9px 10px;font-size:11px}.hero h1{font-size:46px}.stats strong{font-size:19px}}
+/* ---- Donations (Stripe Checkout) ---- */
+.presets{display:flex;flex-wrap:wrap;gap:8px}.preset{min-height:44px;min-width:64px;padding:8px 14px;border:1.5px solid #c9d0d3;border-radius:999px;background:#fff;color:var(--navy);font-size:15px;font-weight:700;transition:border-color .2s,background-color .2s,color .2s}.preset:hover{border-color:var(--navy)}.preset.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.pay-note{display:flex;gap:9px;align-items:center;margin:16px 0 0;padding:12px 14px;border-radius:10px;background:#eef3ef;font-size:13px;color:#2c4a3a}.pay-note::before{content:"🔒";font-size:15px}
+.modal-intro:empty{display:none}.success{padding-top:10px}

@@ -24,7 +24,8 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `api/cron/keepalive.js`: daily query that stops the free Supabase project pausing.
 - `api/_lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes. The underscore keeps this folder private: Vercel neither publishes it nor turns it into web addresses.
 - `kawthar/`: the Kawthar campaign page (`index.html`, `assets/styles.css`, `assets/app.js`) and `assets/forms.js`, the form fields and validation rules shared by the page and `api/kawthar.js`.
-- `api/kawthar.js`: validates and stores Kawthar form submissions, emails the person and the team. Emails are built in `api/_lib/kawthar-email.js`.
+- `api/kawthar.js`: validates and stores Kawthar form submissions, emails the person and the team, and starts Stripe Checkout for donations. Emails are built in `api/_lib/kawthar-email.js`.
+- `api/stripe-webhook.js`: confirms Kawthar donations from Stripe, then sends the receipt and team notification. Stripe setup is in `api/_lib/stripe.js`.
 - `db/schema.sql`: database tables, row-level security and the `connect_writer` role.
 - `adhkar/adhkar-book.pdf`: the book ("Daily Adhkar", 82 pages), published at `/adhkar/adhkar-book.pdf`. It's a lighter copy of the designer's print file "ADHKAR BOOK (Perfect bound) version 2.pdf". Only the background images are recompressed, and the text and artwork are unchanged (23 MB instead of 27 MB).
 - `vercel.json`: `/q/:code` and `/report` rewrites, the London function region, the PDF bundling and the two crons.
@@ -102,6 +103,8 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 | `REPORT_USER` | Optional, defaults to `adam` |
 | `REPORT_EMAIL_TO` | Comma-separated recipients of the weekly report |
 | `KAWTHAR_NOTIFY_TO` | Optional. Who receives Kawthar form notifications, comma-separated. Defaults to `info@adamfoundation.com`. |
+| `STRIPE_SECRET_KEY` | Optional. Turns on Kawthar donations. Use a restricted key (`rk_…`) with Checkout Sessions write and PaymentIntents read. Test keys go in **Preview** only, live keys in **Production**. Mark it Sensitive. |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret (`whsec_…`) of the Stripe webhook endpoint for `/api/stripe-webhook`. Needed whenever `STRIPE_SECRET_KEY` is set. Sensitive. |
 | `CRON_SECRET` | Random string. Vercel sends it to the cron functions automatically. |
 
 ## Go-live checklist
@@ -140,6 +143,25 @@ The Kawthar campaign page (COP31 launch, reusable bottles for UK mosques this Ra
 - `?src=<code>` on the page is stored as the source (default `kawthar`). `?src=test` marks a submission as a test.
 - If you change the marketing checkbox wording (`UPDATES_LABEL` in `forms.js`), bump `KAWTHAR_CONSENT_VERSION` in `api/_lib/consent.js`.
 - Kawthar submissions are not in `/report` or the weekly CSV yet.
+
+### Donations (Stripe)
+
+When `STRIPE_SECRET_KEY` is set, choosing "Fund additional bottles" on the support form becomes a one-off donation of £1 to £10,000, with £10, £25, £50 and £100 shortcuts. The offer text becomes an optional message. Without the key, the option stays an expression of interest, as before.
+
+1. The page asks `GET /api/kawthar` whether payments are on.
+2. On "Continue to secure payment", `api/kawthar.js` stores the submission with `payment_status = 'pending'` and the amount, then opens a Stripe Checkout session (GBP, `submit_type: donate`, expires after an hour). The visitor pays on Stripe's hosted page. Card details never reach this site, and Apple Pay or Google Pay appear when they're enabled in the Stripe Dashboard.
+3. `api/stripe-webhook.js` verifies Stripe's signature and handles these events:
+   - `checkout.session.completed` and `checkout.session.async_payment_succeeded`: the row becomes `paid`, and the donor receipt and team notification go out once only.
+   - `checkout.session.async_payment_failed`: the row becomes `failed`.
+   - `checkout.session.expired`: the row becomes `expired`.
+4. Back on `/kawthar?donation=success`, the page shows the amount and status. The donation is recorded by the webhook, never by this page. `?donation=cancelled` says nothing was charged and offers to try again.
+
+Test-mode donations are stored with `is_test = true`.
+
+**Setting up Stripe**
+1. Create a webhook endpoint in the Stripe Dashboard (Developers → Webhooks) for `https://connect.adamfoundation.com/api/stripe-webhook`, listening to the four events above. Make one in test mode for the Preview deployment as well.
+2. Put the keys and signing secrets in Vercel. Test values go in Preview, live values in Production, and all are marked Sensitive. Never commit them.
+3. Before going live, check that the payment methods are on in the Stripe Dashboard, and that the Foundation's public details are right: name, statement descriptor, support email and charity status.
 
 ## Design notes
 
