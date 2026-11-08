@@ -4,7 +4,8 @@
 // Validation feel: a field is only marked wrong once the person has left it
 // (or pressed Review), but it turns green as soon as it is right, and once
 // marked, its message updates live as they type.
-import { FORMS, validate, checkField, isActive, isDonation, paymentField } from './forms.js';
+import { FORMS, validate, checkField, isActive, isDonation, paymentField, displayValue as display } from './forms.js';
+import { suggestEmail } from './form-ui.js';
 
 const modal = document.querySelector('#flow');
 const body = document.querySelector('#form-body');
@@ -21,10 +22,6 @@ const INPUT_MODES = { email: 'email', ukphone: 'tel', phone: 'tel', url: 'url', 
 const MAX_LENGTHS = { email: 254, postcode: 8, ukphone: 25, phone: 25, url: 200, int: 9, money: 15 };
 const AUTOCOMPLETE = { name: 'name', email: 'email', phone: 'tel', postcode: 'postal-code', org: 'organization', town: 'address-level2', website: 'url' };
 const PLACEHOLDERS = { postcode: 'e.g. SW1P 4QP', email: 'name@example.com', ukphone: 'e.g. 07700 900000', url: 'www.example.org.uk', money: '£' };
-
-// Common email domains, for "Did you mean …?" when someone mistypes one.
-const DOMAINS = ['gmail.com', 'googlemail.com', 'hotmail.com', 'hotmail.co.uk', 'outlook.com', 'live.com', 'live.co.uk',
-  'yahoo.com', 'yahoo.co.uk', 'icloud.com', 'me.com', 'btinternet.com', 'aol.com', 'msn.com', 'sky.com', 'virginmedia.com'];
 
 let opener;
 let key;
@@ -197,38 +194,14 @@ function updateCounter(name) {
   counter.classList.toggle('over', n > field.max);
 }
 
-function levenshtein(a, b) {
-  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 1; i <= a.length; i += 1) {
-    let prev = row[0];
-    row[0] = i;
-    for (let j = 1; j <= b.length; j += 1) {
-      const tmp = row[j];
-      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
-      prev = tmp;
-    }
-  }
-  return row[b.length];
-}
-
 function updateSuggestion(name) {
   const box = boxOf(name);
   const suggest = box?.querySelector('.suggest');
   if (!suggest) return;
-  const value = form.elements[name].value.trim();
-  const at = value.lastIndexOf('@');
-  const domain = at > 0 ? value.slice(at + 1).toLowerCase() : '';
-  let best = null;
-  if (domain.includes('.') && !DOMAINS.includes(domain)) {
-    for (const d of DOMAINS) {
-      const dist = levenshtein(domain, d);
-      if (dist > 0 && dist <= 2 && (!best || dist < best.dist)) best = { d, dist };
-    }
-  }
-  suggest.hidden = !best;
+  const fixed = suggestEmail(form.elements[name].value);
+  suggest.hidden = !fixed;
   suggest.replaceChildren();
-  if (!best) return;
-  const fixed = `${value.slice(0, at + 1)}${best.d}`;
+  if (!fixed) return;
   const button = node('button', '', fixed);
   button.type = 'button';
   button.addEventListener('click', () => {
@@ -372,14 +345,6 @@ function openFlow(formKey, trigger) {
 
   modal.showModal();
   form.querySelector('input:not([tabindex="-1"]),select,textarea').focus();
-}
-
-function display(field, value) {
-  if (field.kind === 'checkbox') return value ? 'Yes' : 'No';
-  if (value === '' || value == null) return 'Not provided';
-  if (field.kind === 'money') return `£${value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (field.kind === 'int') return value.toLocaleString('en-GB');
-  return String(value);
 }
 
 function showReview() {

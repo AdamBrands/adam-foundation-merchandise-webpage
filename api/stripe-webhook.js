@@ -29,7 +29,8 @@ export async function POST(request) {
   }
 
   const session = event.data.object;
-  if (session?.object !== 'checkout.session' || session.metadata?.form !== 'support') {
+  // "support" is /kawthar's support form, "donation" the /kawthar/donate page.
+  if (session?.object !== 'checkout.session' || !['support', 'donation'].includes(session.metadata?.form)) {
     return Response.json({ received: true, ignored: true });
   }
 
@@ -71,7 +72,7 @@ async function fulfil(session) {
     set payment_status = 'paid', paid_at = now(), amount_pence = ${session.amount_total},
         stripe_payment_intent = ${paymentIntent ?? null}
     where stripe_session_id = ${session.id} and payment_status <> 'paid'
-    returning id, data, marketing_opt_in, source`;
+    returning id, form, data, marketing_opt_in, source`;
   if (!rows.length) return; // already handled, or not one of ours
 
   const [submission] = rows;

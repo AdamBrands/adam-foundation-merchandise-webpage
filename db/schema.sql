@@ -90,3 +90,11 @@ alter table public.kawthar_submissions
   add column paid_at timestamptz;
 create unique index kawthar_submissions_stripe_session_idx on public.kawthar_submissions (stripe_session_id)
   where stripe_session_id is not null;
+
+-- Kawthar audience pages (/kawthar/donate, /masjids, /bottle, /corporate),
+-- added 8 November 2026: four more form keys. Run this before deploying them,
+-- or their submissions fail the check and visitors see a "try again" message.
+alter table public.kawthar_submissions
+  drop constraint kawthar_submissions_form_check,
+  add constraint kawthar_submissions_form_check
+    check (form in ('mosque', 'support', 'book', 'masjid', 'partner', 'donation', 'bottle'));

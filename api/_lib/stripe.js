@@ -4,7 +4,8 @@ import Stripe from 'stripe';
 //
 // Payments are switched on only when STRIPE_SECRET_KEY is set. Without it the
 // support form's "Fund additional bottles" option stays an expression of
-// interest, exactly as before. Use a restricted key (rk_…) with only the
+// interest, and the Donate page (/kawthar/donate) records a pledge for the
+// team to follow up. Use a restricted key (rk_…) with only the
 // permissions this needs: Checkout Sessions write, PaymentIntents read.
 // Keep test keys in Vercel's Preview environment only, so the live site never
 // takes test payments.
@@ -39,8 +40,11 @@ const INTEGRATION_ID = 'kawthar-donation-qtrbwmzk';
 
 // Creates the hosted Checkout page for one donation. The idempotency key
 // means a retried request for the same submission never makes a second session.
-export async function createDonationSession({ id, values, source, origin }) {
+// `form` is "support" (/kawthar) or "donation" (/kawthar/donate), and
+// `returnPath` is the page the donor comes back to afterwards.
+export async function createDonationSession({ id, form = 'support', values, source, origin, returnPath = '/kawthar' }) {
   const pence = toPence(values.amount);
+  const onBehalfOf = values.dedication ? { on_behalf_of: String(values.dedication).slice(0, 150) } : {};
   return stripeClient().checkout.sessions.create({
     mode: 'payment',
     submit_type: 'donate',
@@ -57,13 +61,13 @@ export async function createDonationSession({ id, values, source, origin }) {
     }],
     customer_email: values.email,
     client_reference_id: String(id),
-    metadata: { submission_id: String(id), form: 'support', source },
+    metadata: { submission_id: String(id), form, source, ...onBehalfOf },
     payment_intent_data: {
       description: `Kawthar bottle donation #${id}`,
-      metadata: { submission_id: String(id), source },
+      metadata: { submission_id: String(id), source, ...onBehalfOf },
     },
-    success_url: `${origin}/kawthar?donation=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/kawthar?donation=cancelled`,
+    success_url: `${origin}${returnPath}?donation=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}${returnPath}?donation=cancelled`,
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour
     integration_identifier: INTEGRATION_ID,
   }, { idempotencyKey: `kawthar-donation-${id}` });

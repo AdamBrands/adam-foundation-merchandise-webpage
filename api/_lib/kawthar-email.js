@@ -1,10 +1,11 @@
-import { FORMS } from '../../kawthar/assets/forms.js';
+import { FORMS, displayValue, submitterName } from '../../kawthar/assets/forms.js';
 import { escapeHtml } from './request.js';
 import { WHATSAPP } from './email.js';
 
-// Emails for the Kawthar page (/kawthar): a copy for the person who filled in
-// the mosque or support form, and a notification to the team for all three
-// forms. The book form's own email is bookEmail() in email.js.
+// Emails for the Kawthar pages (/kawthar and the four audience pages under
+// /kawthar/…): a copy for the person who filled in a form, and a notification
+// to the team for every form. The book forms' own email is bookEmail() in
+// email.js, and donation receipts are sent by donationEmails() below.
 
 const SOCIALS = [
   ['WhatsApp channel', WHATSAPP],
@@ -14,7 +15,8 @@ const SOCIALS = [
   ['X', 'https://x.com/theadamfdn'],
 ];
 
-const PAGE = 'connect.adamfoundation.com/kawthar';
+// The page a form lives on, as shown in email footers.
+const pageOf = (form) => `connect.adamfoundation.com${FORMS[form]?.page || '/kawthar'}`;
 
 // Team inbox. Comma-separated list allowed; defaults to info@.
 export function notifyRecipients() {
@@ -23,19 +25,13 @@ export function notifyRecipients() {
   return list.length ? list : ['info@adamfoundation.com'];
 }
 
-function display(field, value) {
-  if (field.kind === 'checkbox') return value ? 'Yes' : 'No';
-  if (value === '' || value == null) return 'Not provided';
-  if (field.kind === 'money') return `£${Number(value).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (field.kind === 'int') return Number(value).toLocaleString('en-GB');
-  return String(value);
-}
-
-// [label, displayed value] for every field that was submitted.
-function rows(formKey, values) {
+// [label, displayed value] for every field that was submitted, leaving out
+// the names in `skip` and an unused corporate "starting point".
+function rows(formKey, values, skip = []) {
   return FORMS[formKey].fields
-    .filter((f) => f.name in values)
-    .map((f) => [f.label.replace(/ \(optional\)$/i, ''), display(f, values[f.name])]);
+    .filter((f) => f.name in values && !skip.includes(f.name))
+    .filter((f) => !(f.name === 'partnership_path' && !values[f.name]))
+    .map((f) => [f.label.replace(/ \(optional\)$/i, ''), displayValue(f, values[f.name])]);
 }
 
 function tableHtml(list) {
@@ -79,6 +75,31 @@ const COPY = {
       'This is an expression of interest only: no payment has been taken and no pledge has been recorded.',
     ],
   },
+  masjid: {
+    subject: 'We’ve received your Kawthar bottle application',
+    heading: 'Application received',
+    lines: (v) => [
+      `Thank you for applying for Kawthar bottles for ${v.mosque}. Our team will review your application and be in touch using the details below.`,
+      'Applications are reviewed against available stock and distribution arrangements, so applying does not guarantee a particular quantity.',
+    ],
+  },
+  partner: {
+    subject: 'Thank you for your interest in partnering with Kawthar',
+    heading: 'Thank you for your enquiry',
+    lines: (v) => [
+      `Thank you for your interest in partnering with Kawthar on behalf of ${v.organisation}. Our team will be in touch to discuss how you would like to take part.`,
+    ],
+  },
+  // Sent only while online payments are off. With payments on, the receipt
+  // comes from donationEmails() once Stripe confirms the payment.
+  donation: {
+    subject: 'Thank you for your Kawthar pledge',
+    heading: 'Thank you for your pledge',
+    lines: (v) => [
+      `Thank you for pledging £${Number(v.amount).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to help fund reusable Kawthar bottles.`,
+      'Online payment isn’t open yet, so nothing has been charged. Our team will contact you to complete your gift.',
+    ],
+  },
 };
 
 // Copy of the mosque or support form for the person who sent it.
@@ -92,21 +113,21 @@ export function confirmationEmail({ form, values, optIn }) {
 
   const html = layout({
     heading: copy.heading,
-    intro: para(`Dear ${escapeHtml(values.name)},`) + copy.lines(values).map((l) => para(escapeHtml(l))).join(''),
+    intro: para(`Dear ${escapeHtml(submitterName(form, values))},`) + copy.lines(values).map((l) => para(escapeHtml(l))).join(''),
     inner: `<p style="margin:8px 0 8px;font-size:13px;font-weight:bold;color:#122d45">Your details</p>${tableHtml(list)}
 ${para('If anything needs correcting, just reply to this email.')}
 <p style="margin:0 0 6px;font-size:15px;line-height:1.6">Stay connected with us:</p>
 <p style="margin:0 0 24px;font-size:14px;line-height:1.8">${socialsHtml}</p>`,
-    footer: `You are receiving this email because ${escapeHtml(values.email)} was entered at ${PAGE}. ${choice}`,
+    footer: `You are receiving this email because ${escapeHtml(values.email)} was entered at ${pageOf(form)}. ${choice}`,
   });
 
   const text = [
-    `Dear ${values.name},`, '',
+    `Dear ${submitterName(form, values)},`, '',
     ...copy.lines(values).flatMap((l) => [l, '']),
     'Your details', tableText(list), '',
     'If anything needs correcting, just reply to this email.', '',
     'Stay connected:', ...SOCIALS.map(([n, u]) => `${n}: ${u}`), '',
-    `You are receiving this email because ${values.email} was entered at ${PAGE}. ${choice}`, '',
+    `You are receiving this email because ${values.email} was entered at ${pageOf(form)}. ${choice}`, '',
     'Adam Foundation',
   ].join('\n');
 
@@ -117,6 +138,20 @@ const TEAM_SUBJECT = {
   mosque: (v) => `Kawthar mosque application: ${v.mosque}, ${v.town}`,
   support: (v) => `Kawthar support offer: ${v.name}${v.org ? ` (${v.org})` : ''} – ${v.type}`,
   book: (v) => `Kawthar book request: ${v.name}`,
+  masjid: (v) => `Kawthar Masjid application: ${v.mosque}, ${v.town} – ${Number(v.quantity).toLocaleString('en-GB')} bottles`,
+  partner: (v) => `Kawthar partnership enquiry: ${v.organisation} – ${v.interest}`,
+  donation: (v) => `Kawthar pledge: £${Number(v.amount).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from ${submitterName('donation', v)}`,
+  bottle: (v) => `Kawthar book request (bottle QR): ${v.name}`,
+};
+
+const TEAM_HEADING = {
+  mosque: 'New mosque application',
+  support: 'New offer of support',
+  book: 'New adhkar book request',
+  masjid: 'New Masjid application',
+  partner: 'New partnership enquiry',
+  donation: 'New pledge (payment not taken)',
+  bottle: 'New adhkar book request (bottle QR)',
 };
 
 // Notification to the team. Reply-To is the visitor, so staff can answer directly.
@@ -129,18 +164,19 @@ export function notificationEmail({ form, values, id, source, personEmailed }) {
     ['Reference', `kawthar_submissions #${id}`],
     ['Copy emailed to them', personEmailed ? 'Yes' : 'No: please follow up by hand'],
   ];
-  const heading = { mosque: 'New mosque application', support: 'New offer of support', book: 'New adhkar book request' }[form];
+  const heading = TEAM_HEADING[form];
+  const name = submitterName(form, values);
 
   const html = layout({
     heading,
-    intro: para(`Submitted on the Kawthar page by ${escapeHtml(values.name)} (<a href="mailto:${escapeHtml(values.email)}" style="color:#264f70">${escapeHtml(values.email)}</a>). Reply to this email to answer them directly.`),
+    intro: para(`Submitted on ${escapeHtml(pageOf(form))} by ${escapeHtml(name)} (<a href="mailto:${escapeHtml(values.email)}" style="color:#264f70">${escapeHtml(values.email)}</a>). Reply to this email to answer them directly.`),
     inner: tableHtml(list) + tableHtml(meta),
-    footer: `Sent automatically from ${PAGE}. Marketing consent: ${values.updates ? 'opted in' : 'not given'}.`,
+    footer: `Sent automatically from ${pageOf(form)}. Marketing consent: ${values.updates ? 'opted in' : 'not given'}.`,
   });
   const text = [
-    `${heading} from the Kawthar page.`, '',
+    `${heading} from ${pageOf(form)}.`, '',
     tableText(list), '', tableText(meta), '',
-    `Reply to this email to answer ${values.name} directly.`,
+    `Reply to this email to answer ${name} directly.`,
   ].join('\n');
 
   return {
@@ -156,8 +192,11 @@ export function notificationEmail({ form, values, id, source, personEmailed }) {
 // Sent by api/stripe-webhook.js once Stripe confirms a donation.
 export function donationEmails({ submission, amount, reference }) {
   const values = submission.data;
+  const form = FORMS[submission.form] ? submission.form : 'support';
+  const name = submitterName(form, values);
+  const org = values.org || values.organisation;
   const optIn = submission.marketing_opt_in;
-  const list = rows('support', values).filter(([k]) => !/^Indicative contribution/.test(k));
+  const list = rows(form, values, ['amount']);
   const choice = optIn
     ? 'You also asked to receive email news from Adam Foundation. You can unsubscribe at any time.'
     : 'You did not sign up for marketing emails, so we will not send you any.';
@@ -166,31 +205,31 @@ export function donationEmails({ submission, amount, reference }) {
 
   const receiptHtml = layout({
     heading: 'Thank you for your donation',
-    intro: para(`Dear ${escapeHtml(values.name)},`)
+    intro: para(`Dear ${escapeHtml(name)},`)
       + para(`Thank you for donating <strong>${escapeHtml(amount)}</strong> to help fund reusable Kawthar bottles for UK mosques this Ramadan. Your gift helps us move from our first 10,000 bottles towards our shared goal of 100,000.`)
-      + para('Our team will also be in touch about the support you described.'),
+      + (form === 'support' ? para('Our team will also be in touch about the support you described.') : ''),
     inner: `${tableHtml(summary)}
 <p style="margin:8px 0 8px;font-size:13px;font-weight:bold;color:#122d45">Your details</p>${tableHtml(list)}
 ${para('Please keep this email as a record of your donation. If anything needs correcting, just reply to it.')}
 <p style="margin:0 0 6px;font-size:15px;line-height:1.6">Stay connected with us:</p>
 <p style="margin:0 0 24px;font-size:14px;line-height:1.8">${socialsHtml}</p>`,
-    footer: `You are receiving this email because ${escapeHtml(values.email)} made a donation at ${PAGE}. ${choice}`,
+    footer: `You are receiving this email because ${escapeHtml(values.email)} made a donation at ${pageOf(form)}. ${choice}`,
   });
   const receiptText = [
-    `Dear ${values.name},`, '',
+    `Dear ${name},`, '',
     `Thank you for donating ${amount} to help fund reusable Kawthar bottles for UK mosques this Ramadan.`, '',
     tableText(summary), '', 'Your details', tableText(list), '',
     'Please keep this email as a record of your donation.', '',
     'Stay connected:', ...SOCIALS.map(([n, u]) => `${n}: ${u}`), '',
-    `You are receiving this email because ${values.email} made a donation at ${PAGE}. ${choice}`, '', 'Adam Foundation',
+    `You are receiving this email because ${values.email} made a donation at ${pageOf(form)}. ${choice}`, '', 'Adam Foundation',
   ].join('\n');
 
   const meta = [['Donation', amount], ['Payment reference', reference], ['Source', submission.source], ['Reference', `kawthar_submissions #${submission.id}`]];
   const notifyHtml = layout({
     heading: `New donation: ${escapeHtml(amount)}`,
-    intro: para(`${escapeHtml(values.name)} (<a href="mailto:${escapeHtml(values.email)}" style="color:#264f70">${escapeHtml(values.email)}</a>) donated ${escapeHtml(amount)} through Stripe on the Kawthar page. Reply to this email to answer them directly.`),
+    intro: para(`${escapeHtml(name)} (<a href="mailto:${escapeHtml(values.email)}" style="color:#264f70">${escapeHtml(values.email)}</a>) donated ${escapeHtml(amount)} through Stripe on ${escapeHtml(pageOf(form))}. Reply to this email to answer them directly.`),
     inner: tableHtml(meta) + tableHtml(list),
-    footer: `Sent automatically from ${PAGE}. Marketing consent: ${optIn ? 'opted in' : 'not given'}.`,
+    footer: `Sent automatically from ${pageOf(form)}. Marketing consent: ${optIn ? 'opted in' : 'not given'}.`,
   });
   const notifyText = [`New Kawthar donation: ${amount}`, '', tableText(meta), '', tableText(list)].join('\n');
 
@@ -198,7 +237,7 @@ ${para('Please keep this email as a record of your donation. If anything needs c
     receipt: { to: values.email, subject: `Thank you for your ${amount} Kawthar donation`, html: receiptHtml, text: receiptText, tags: ['kawthar-donation'] },
     notify: {
       to: notifyRecipients(), replyTo: values.email,
-      subject: `Kawthar donation: ${amount} from ${values.name}${values.org ? ` (${values.org})` : ''}`.slice(0, 180),
+      subject: `Kawthar donation: ${amount} from ${name}${org ? ` (${org})` : ''}`.slice(0, 180),
       html: notifyHtml, text: notifyText, tags: ['kawthar-notify'],
     },
   };

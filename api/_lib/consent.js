@@ -8,3 +8,8 @@ export const CONSENT_TEXT =
 // wording itself is UPDATES_LABEL in kawthar/assets/forms.js, which api/kawthar.js
 // stores with each submission. Bump this version whenever that wording changes.
 export const KAWTHAR_CONSENT_VERSION = '2026-11-kawthar-v1';
+//
+// The four audience pages (/kawthar/donate, /masjids, /bottle, /corporate)
+// each show their own wording: AUDIENCE_UPDATES in kawthar/assets/forms.js,
+// versioned by AUDIENCE_CONSENT_VERSION there (the page scripts need it too).
+export { AUDIENCE_CONSENT_VERSION } from '../../kawthar/assets/forms.js';

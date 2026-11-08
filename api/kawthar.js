@@ -4,19 +4,23 @@ import { confirmationEmail, notificationEmail } from './_lib/kawthar-email.js';
 import { KAWTHAR_CONSENT_VERSION } from './_lib/consent.js';
 import { cleanCode, deviceFrom } from './_lib/request.js';
 import { createDonationSession, formatGBP, paymentsEnabled, stripeClient, testMode, toPence } from './_lib/stripe.js';
-import { FORMS, UPDATES_LABEL, isDonation, validate } from '../kawthar/assets/forms.js';
+import { FORMS, consentFor, isDonation, submitterName, validate } from '../kawthar/assets/forms.js';
 
 const MAX_BODY = 32 * 1024;
+const DONATION_FORMS = ['support', 'donation'];
 
-// Receives the three Kawthar forms (mosque application, support offer, book
-// request) as JSON from kawthar/assets/app.js. The same rules as the page
+// Receives the Kawthar forms as JSON: the three on /kawthar (mosque
+// application, support offer, book request) from kawthar/assets/app.js, and
+// the four audience-page forms (masjid application, corporate partnership,
+// donation, bottle QR book request) from kawthar/assets/audience.js. The same
+// rules as the page
 // (kawthar/assets/forms.js) are applied again here. Every valid submission
 // is stored in kawthar_submissions, then the person gets a copy (or the book)
 // and the team gets a notification. A repeat of the same form from the same
 // address within 10 minutes is stored as "duplicate" and not re-sent.
 //
-// Donations (support form, "Fund additional bottles", while STRIPE_SECRET_KEY
-// is set) are stored with payment_status "pending" and the visitor is sent to
+// Donations (the Donate page's form, or the support form's "Fund additional
+// bottles", while STRIPE_SECRET_KEY is set) are stored with payment_status "pending" and the visitor is sent to
 // Stripe Checkout. No email goes out here: api/stripe-webhook.js sends the
 // receipt and the team notification once Stripe confirms the payment.
 export async function POST(request) {
@@ -52,8 +56,13 @@ export async function POST(request) {
 
   const source = cleanCode(payload.source) || 'kawthar';
   const optIn = values.updates === true;
+  const name = submitterName(form, values);
+  const consent = consentFor(form);
+  const consentVersion = consent.version || KAWTHAR_CONSENT_VERSION;
 
-  if (isDonation(form, values, payments)) return startDonation({ request, reply, values, source, optIn });
+  if (isDonation(form, values, payments)) {
+    return startDonation({ request, reply, form, name, values, source, optIn, consent: consent.text, consentVersion });
+  }
 
   let id;
   let duplicate;
@@ -70,8 +79,8 @@ export async function POST(request) {
       insert into kawthar_submissions
         (form, name, email, data, marketing_opt_in, consent_text, consent_version, source, device, is_test, email_status)
       values
-        (${form}, ${values.name}, ${values.email}, ${sql.json(values)}, ${optIn}, ${UPDATES_LABEL},
-         ${KAWTHAR_CONSENT_VERSION}, ${source}, ${deviceFrom(request)}, ${source === 'test'},
+        (${form}, ${name}, ${values.email}, ${sql.json(values)}, ${optIn}, ${consent.text},
+         ${consentVersion}, ${source}, ${deviceFrom(request)}, ${source === 'test'},
          ${duplicate ? 'duplicate' : 'pending'})
       returning id`;
   } catch (err) {
@@ -86,13 +95,15 @@ export async function POST(request) {
   const problems = [];
   let personEmailed = false;
   try {
-    const message = form === 'book'
+    const message = form === 'book' || form === 'bottle'
       ? await bookEmail({
         email: values.email,
         optIn,
-        name: values.name,
-        optInText: 'You also asked to receive email news from Adam Foundation, including Community Exchange Hub, Avicenna Foundation and Adam Hub.',
-        tag: 'kawthar-book',
+        name,
+        optInText: form === 'bottle'
+          ? 'You also asked to receive email news from Community Exchange Hub and Adam Foundation.'
+          : 'You also asked to receive email news from Adam Foundation, including Community Exchange Hub, Avicenna Foundation and Adam Hub.',
+        tag: form === 'bottle' ? 'kawthar-bottle-book' : 'kawthar-book',
       })
       : confirmationEmail({ form, values, optIn });
     ids.push(await sendEmail(message));
@@ -119,19 +130,25 @@ export async function POST(request) {
 }
 
 function successMessage(form, values, emailed) {
-  if (form === 'book') {
+  if (form === 'book' || form === 'bottle') {
     return emailed
       ? `We’ve sent the adhkar book to ${values.email}. It should arrive in a few minutes. If you can’t see it, please check your junk folder.`
       : 'We’ve saved your request, but the email didn’t send straight away. We’ll send your book to you shortly.';
   }
-  const what = form === 'mosque' ? 'your mosque’s application' : 'your offer of support';
+  const what = {
+    mosque: 'your mosque’s application',
+    masjid: 'your Masjid’s application',
+    partner: 'your partnership enquiry',
+    donation: 'your pledge',
+  }[form] || 'your offer of support';
   return emailed
     ? `${FORMS[form].success}`
     : `Thank you. We’ve received ${what}, but couldn’t email you a copy just now. Our team has your details and will be in touch.`;
 }
 
-// Stores the offer as a pending donation and opens a Stripe Checkout session.
-async function startDonation({ request, reply, values, source, optIn }) {
+// Stores the submission as a pending donation and opens a Stripe Checkout
+// session. The donor comes back to the page they gave from.
+async function startDonation({ request, reply, form, name, values, source, optIn, consent, consentVersion }) {
   let id;
   try {
     [{ id }] = await sql`
@@ -139,8 +156,8 @@ async function startDonation({ request, reply, values, source, optIn }) {
         (form, name, email, data, marketing_opt_in, consent_text, consent_version, source, device, is_test,
          email_status, payment_status, amount_pence)
       values
-        ('support', ${values.name}, ${values.email}, ${sql.json(values)}, ${optIn}, ${UPDATES_LABEL},
-         ${KAWTHAR_CONSENT_VERSION}, ${source}, ${deviceFrom(request)}, ${source === 'test' || testMode()},
+        (${form}, ${name}, ${values.email}, ${sql.json(values)}, ${optIn}, ${consent},
+         ${consentVersion}, ${source}, ${deviceFrom(request)}, ${source === 'test' || testMode()},
          'pending', 'pending', ${toPence(values.amount)})
       returning id`;
   } catch (err) {
@@ -149,7 +166,9 @@ async function startDonation({ request, reply, values, source, optIn }) {
   }
 
   try {
-    const session = await createDonationSession({ id, values, source, origin: new URL(request.url).origin });
+    const session = await createDonationSession({
+      id, form, values, source, origin: new URL(request.url).origin, returnPath: FORMS[form].page || '/kawthar',
+    });
     await sql`update kawthar_submissions set stripe_session_id = ${session.id} where id = ${id}`;
     return reply(200, { checkoutUrl: session.url });
   } catch (err) {
@@ -174,7 +193,7 @@ export async function GET(request) {
   }
   try {
     const session = await stripeClient().checkout.sessions.retrieve(sessionId);
-    if (session.metadata?.form !== 'support') return Response.json({ ok: false }, { status: 404, headers });
+    if (!DONATION_FORMS.includes(session.metadata?.form)) return Response.json({ ok: false }, { status: 404, headers });
     return Response.json({
       ok: true,
       paid: session.payment_status !== 'unpaid',
