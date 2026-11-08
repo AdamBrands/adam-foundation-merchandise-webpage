@@ -435,7 +435,10 @@ if (partnerDialog && partnerForm) {
     const interest = button.dataset.partnerInterest || '';
     const suggested = button.dataset.partnerMessage || '';
     const { elements } = partnerForm;
-    if (interest || !elements.interest.value) elements.interest.value = interest;
+    // As in the design: each button sets its own interest, and the general
+    // "Become a Partner" buttons clear it so the person chooses.
+    elements.interest.value = interest;
+    partner.touched.delete('interest');
     elements.partnership_path.value = button.dataset.partnerPath || '';
     if (!elements.message.value.trim() || elements.message.value === lastSuggestedMessage) elements.message.value = suggested;
     lastSuggestedMessage = suggested;
