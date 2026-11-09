@@ -53,3 +53,14 @@ fieldset[data-field] .field-msg.show{margin-top:8px}
 .pay-note{display:flex;gap:9px;align-items:center;margin:16px 0 0;padding:12px 14px;border-radius:8px;background:#eef3ef;font-size:13px;color:#2c4a3a}
 .pay-note::before{content:"🔒";font-size:15px}
 .result [data-result-text]:empty{display:none}
+
+/* Social links in the organisation cards (Bottle QR and Corporate): a row of
+   brand logos instead of the designs' long handle rows. Each link's
+   aria-label and tooltip still give the network and handle. */
+.icon-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.organisation-socials.social-icons{flex-direction:row;flex-wrap:wrap;gap:12px;padding-top:18px}
+.social-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;transition:transform .15s ease,box-shadow .15s ease}
+.social-icon svg{width:36px;height:36px;display:block}
+.social-icon:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.social-icon:focus-visible{outline:2px solid var(--accent,#264f70);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.social-icon{transition:none}.social-icon:hover{transform:none}}
