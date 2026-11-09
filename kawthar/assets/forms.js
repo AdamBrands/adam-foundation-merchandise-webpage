@@ -1,88 +1,133 @@
 // Kawthar forms: field definitions and validation.
 //
-// This one file is loaded by the page (kawthar/assets/app.js) and imported by
-// the server (api/kawthar.js), so the browser and the server always apply the
-// same rules. Keep it free of browser-only and Node-only code.
-//
-// If you change the wording of UPDATES_LABEL, update KAWTHAR_CONSENT_TEXT in
-// api/_lib/consent.js to match and bump KAWTHAR_CONSENT_VERSION.
+// This one file is loaded by the four Kawthar pages (kawthar/assets/audience.js)
+// and imported by the server (api/kawthar.js), so the browser and the server
+// always apply the same rules. Keep it free of browser-only and Node-only code.
 
-export const UPDATES_LABEL =
-  'I would also like email news from Adam Foundation, including Community Exchange Hub, Avicenna Foundation and Adam Hub. (Optional)';
-
-const FUND = 'Fund additional bottles';
+// Marketing checkbox wording on the four audience pages, word for word as the
+// pages show it. Each submission stores the wording its form showed. If any of
+// these change, update the page to match and bump AUDIENCE_CONSENT_VERSION.
+export const AUDIENCE_UPDATES = {
+  masjid: 'Send me occasional emails from Adam Foundation, including Community Exchange Hub news and events. I can unsubscribe at any time. Optional.',
+  partner: 'Send me occasional Adam Foundation emails about our work and opportunities to get involved. I can unsubscribe at any time. Optional.',
+  donation: 'Keep me updated by email on Kawthar and Adam Foundation’s work. I can unsubscribe at any time. Optional.',
+  bottle: 'Keep me updated by email with Community Exchange Hub news, events and Adam Foundation activities. I can unsubscribe at any time. Optional.',
+};
+export const AUDIENCE_CONSENT_VERSION = '2026-11-kawthar-audience-v1';
 
 // Field options:
 //   name, label, kind, required
 //   noun     words used in "Enter …" / "Select …" messages
 //   min/max  length for text, value for numbers
-//   options  for selects
-//   showIf   { field, equals }: the field only exists when another has that value
-//   payment  overrides used when online payments are on (see paymentField)
-//   full     spans both columns in the two-column layout
+//   options  for selects (optionLabels: how a value reads in reviews and emails)
+//   presets  suggested amounts for money
 export const FORMS = {
-  mosque: {
-    title: 'Apply for Ramadan bottles',
-    intro: 'For authorised representatives of UK mosques. Fields marked * are required. We’ll email you a copy of your application.',
-    success: 'Thank you. We’ve received your mosque’s application and emailed you a copy. Our team will review it and be in touch. Applications are subject to review and availability.',
+  // The four Kawthar pages (/donate, /masjids, /bottle, /corporate).
+  // Their fields and checkbox wording come from the comms team's designs, and
+  // the markup lives in each page; kawthar/assets/audience.js checks that every
+  // field below exists there and that `updatesLabel` matches the page's wording.
+  masjid: {
+    page: '/masjids',
+    heading: 'Application received',
+    success: 'Thank you. We’ve received your Masjid’s application and emailed you a copy. Our team will review it and be in touch. An application does not guarantee an allocation.',
+    updatesLabel: AUDIENCE_UPDATES.masjid,
+    consentVersion: AUDIENCE_CONSENT_VERSION,
     fields: [
-      { name: 'mosque', label: 'Mosque name', kind: 'text', required: true, noun: 'the mosque’s name', min: 2, max: 150 },
+      { name: 'mosque', label: 'Masjid name', kind: 'text', required: true, noun: 'the Masjid’s name', min: 2, max: 160 },
       { name: 'town', label: 'Town or city', kind: 'text', required: true, noun: 'the town or city', min: 2, max: 100 },
-      { name: 'postcode', label: 'UK postcode', kind: 'postcode', required: true, noun: 'the mosque’s postcode' },
+      { name: 'postcode', label: 'UK postcode', kind: 'postcode', required: true, noun: 'the Masjid’s postcode' },
       { name: 'name', label: 'Your full name', kind: 'person', required: true, noun: 'your full name', min: 2, max: 100 },
-      { name: 'role', label: 'Your role at the mosque', kind: 'text', required: true, noun: 'your role at the mosque', min: 2, max: 100 },
+      { name: 'role', label: 'Your role at the Masjid', kind: 'text', required: true, noun: 'your role at the Masjid', min: 2, max: 100 },
       { name: 'email', label: 'Email address', kind: 'email', required: true, noun: 'your email address' },
       { name: 'phone', label: 'Telephone number', kind: 'ukphone', required: true, noun: 'a UK telephone number' },
-      { name: 'website', label: 'Mosque website (optional)', kind: 'url', required: false, noun: 'the mosque’s website' },
-      { name: 'attendance', label: 'Estimated night-prayer attendance', kind: 'int', required: true, noun: 'the estimated attendance', min: 1, max: 100000 },
       { name: 'quantity', label: 'Number of bottles requested', kind: 'int', required: true, noun: 'the number of bottles', min: 1, max: 10000 },
-      { name: 'refill', label: 'Drinking-water refill arrangements', kind: 'select', required: true, noun: 'your refill arrangements',
-        options: ['Facilities are available', 'We plan to arrange facilities', 'We need help planning facilities'] },
-      { name: 'plan', label: 'How will you distribute bottles and encourage refilling?', kind: 'longtext', required: true, noun: 'how you will distribute the bottles', min: 20, max: 2000, full: true },
-      { name: 'notes', label: 'Anything else we should know? (optional)', kind: 'longtext', required: false, noun: 'anything else', max: 2000, full: true },
-      { name: 'authority', label: 'I am authorised to apply on behalf of this mosque.', kind: 'checkbox', required: true,
-        message: 'Confirm you are authorised to apply on behalf of this mosque' },
-      { name: 'contact', label: 'I agree to be contacted about this application.', kind: 'checkbox', required: true,
-        message: 'Agree to be contacted about this application, so we can review it with you' },
-      { name: 'updates', label: UPDATES_LABEL, kind: 'checkbox', required: false },
+      { name: 'refill', label: 'Drinking-water refill facilities', kind: 'select', required: true, noun: 'your refill facilities',
+        options: ['Available at our mosque', 'We plan to arrange them', 'We need help planning them'] },
+      { name: 'notes', label: 'Anything else we should know? (optional)', kind: 'longtext', required: false, noun: 'anything else', max: 1500 },
+      { name: 'authority', label: 'I am authorised to apply on behalf of this Masjid.', kind: 'checkbox', required: true,
+        message: 'Confirm you are authorised to apply on behalf of this Masjid' },
+      { name: 'updates', label: 'Email updates (optional)', kind: 'checkbox', required: false },
     ],
   },
-  support: {
-    title: 'Help us reach 100,000',
-    intro: 'Tell us how you would like to contribute. This is an expression of interest, not a payment or binding pledge. Fields marked * are required.',
-    introPayments: 'Tell us how you would like to contribute. Choosing to fund bottles takes you to a secure Stripe page to donate; other offers are an expression of interest. Fields marked * are required.',
-    success: 'Thank you for offering your support. We’ve emailed you a copy and our team will be in touch to discuss it. No money has been taken and no pledge has been recorded.',
+  partner: {
+    page: '/corporate',
+    heading: 'Thank you for your enquiry',
+    success: 'Thank you. We’ve received your partnership enquiry and emailed you a copy. Our team will be in touch to discuss it.',
+    updatesLabel: AUDIENCE_UPDATES.partner,
+    consentVersion: AUDIENCE_CONSENT_VERSION,
     fields: [
-      { name: 'who', label: 'I am enquiring as', kind: 'select', required: true, noun: 'who you are enquiring as',
-        options: ['An individual', 'A business', 'A charity or organisation'] },
-      { name: 'name', label: 'Your full name', kind: 'person', required: true, noun: 'your full name', min: 2, max: 100 },
-      { name: 'org', label: 'Organisation name (optional)', kind: 'text', required: false, noun: 'the organisation’s name', min: 2, max: 150 },
-      { name: 'email', label: 'Email address', kind: 'email', required: true, noun: 'your email address' },
+      { name: 'partnership_path', label: 'Starting point', kind: 'select', required: false, noun: 'a starting point',
+        options: ['fund_bottles', 'share_expertise', 'involve_team', 'share_message'],
+        optionLabels: { fund_bottles: 'Fund the next bottles', share_expertise: 'Share your expertise', involve_team: 'Involve your team', share_message: 'Help the message travel' } },
+      { name: 'organisation', label: 'Organisation name', kind: 'text', required: true, noun: 'your organisation’s name', min: 2, max: 160 },
+      { name: 'name', label: 'Your name', kind: 'person', required: true, noun: 'your name', min: 2, max: 100 },
+      { name: 'email', label: 'Work email', kind: 'email', required: true, noun: 'your work email address' },
       { name: 'phone', label: 'Telephone number (optional)', kind: 'phone', required: false, noun: 'a telephone number' },
-      { name: 'type', label: 'How would you like to help?', kind: 'select', required: true, noun: 'how you would like to help',
-        options: [FUND, 'Support drinking-water refills', 'Help with distribution or logistics', 'Volunteer time or skills', 'Discuss another contribution'] },
-      { name: 'amount', label: 'Indicative contribution in GBP (optional)', kind: 'money', required: false, noun: 'an amount', min: 1, max: 1000000,
-        showIf: { field: 'type', equals: FUND },
-        // When online payments are on, this is the donation taken by Stripe.
-        payment: { label: 'Indicative contribution in GBP', noun: 'an amount', required: true, min: 1, max: 10000, presets: [10, 25, 50, 100] } },
-      { name: 'offer', label: 'Tell us about the support you can offer', kind: 'longtext', required: true, noun: 'the support you can offer', min: 20, max: 2000, full: true,
-        payment: { label: 'Message to our team (optional)', noun: 'your message', required: false, min: 0 } },
-      { name: 'contact', label: 'I agree to be contacted about this offer of support.', kind: 'checkbox', required: true,
-        message: 'Agree to be contacted about your offer, so we can discuss it with you' },
-      { name: 'updates', label: UPDATES_LABEL, kind: 'checkbox', required: false },
+      { name: 'interest', label: 'Partnership interest', kind: 'select', required: true, noun: 'your partnership interest',
+        options: ['Bottle Sponsorship', 'Charity / Donation', 'Masjid Support', 'Corporate Partnership', 'Community Engagement', 'Other'] },
+      { name: 'message', label: 'What would you like to contribute?', kind: 'longtext', required: true, noun: 'what you would like to contribute', min: 20, max: 2000 },
+      { name: 'updates', label: 'Email updates (optional)', kind: 'checkbox', required: false },
     ],
   },
-  book: {
-    title: 'Your free digital adhkar book',
-    intro: 'Adhkar are words of remembrance and supplication. Enter your details and we’ll email you the book straight away. Fields marked * are required.',
+  donation: {
+    page: '/donate',
+    heading: 'Thank you for your pledge',
+    // Used only while online payments are off: the gift is recorded as a
+    // pledge and the team arranges payment. With payments on, the donor goes
+    // to Stripe and api/stripe-webhook.js sends the receipt.
+    success: 'Thank you. We’ve recorded your pledge and emailed you a copy. Online payment isn’t open yet, so our team will contact you to complete your gift. Nothing has been charged.',
+    updatesLabel: AUDIENCE_UPDATES.donation,
+    consentVersion: AUDIENCE_CONSENT_VERSION,
+    fields: [
+      { name: 'amount', label: 'Donation', kind: 'money', required: true, noun: 'an amount', min: 1, max: 10000, presets: [10, 25, 50, 100] },
+      { name: 'first_name', label: 'First name', kind: 'person', required: true, noun: 'your first name', min: 1, max: 100 },
+      { name: 'last_name', label: 'Last name', kind: 'person', required: true, noun: 'your last name', min: 1, max: 100 },
+      { name: 'email', label: 'Email address', kind: 'email', required: true, noun: 'your email address' },
+      { name: 'phone', label: 'Phone number (optional)', kind: 'phone', required: false, noun: 'a phone number' },
+      { name: 'country', label: 'Country', kind: 'text', required: true, noun: 'your country', min: 2, max: 100 },
+      { name: 'organisation', label: 'Organisation name (optional)', kind: 'text', required: false, noun: 'the organisation’s name', min: 2, max: 160 },
+      { name: 'dedication', label: 'On behalf of (optional)', kind: 'text', required: false, noun: 'the name the gift is on behalf of', min: 2, max: 150 },
+      { name: 'message', label: 'Anything you would like us to know? (optional)', kind: 'longtext', required: false, noun: 'your message', max: 1000 },
+      { name: 'updates', label: 'Email updates (optional)', kind: 'checkbox', required: false },
+    ],
+  },
+  bottle: {
+    page: '/bottle',
+    heading: 'Check your inbox',
     success: 'We’ve emailed your free adhkar book. It should arrive in a few minutes. If you can’t see it, please check your junk folder.',
+    updatesLabel: AUDIENCE_UPDATES.bottle,
+    consentVersion: AUDIENCE_CONSENT_VERSION,
     fields: [
       { name: 'name', label: 'Your name', kind: 'person', required: true, noun: 'your name', min: 2, max: 100 },
       { name: 'email', label: 'Email address', kind: 'email', required: true, noun: 'your email address' },
-      { name: 'updates', label: UPDATES_LABEL, kind: 'checkbox', required: false },
+      { name: 'updates', label: 'Email updates (optional)', kind: 'checkbox', required: false },
     ],
   },
 };
+
+// Who a submission is from, for the database row and email greetings.
+export function submitterName(formKey, values) {
+  const name = formKey === 'donation'
+    ? `${values?.first_name ?? ''} ${values?.last_name ?? ''}`.trim()
+    : String(values?.name ?? '').trim();
+  return name.slice(0, 100);
+}
+
+// The marketing checkbox wording a form showed, and its consent version.
+export function consentFor(formKey) {
+  const form = FORMS[formKey];
+  return { text: form?.updatesLabel ?? '', version: form?.consentVersion ?? AUDIENCE_CONSENT_VERSION };
+}
+
+// A validated answer as people read it (review step and emails).
+export function displayValue(field, value) {
+  if (field.kind === 'checkbox') return value ? 'Yes' : 'No';
+  if (value === '' || value == null) return 'Not provided';
+  if (field.kind === 'money') return `£${Number(value).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (field.kind === 'int') return Number(value).toLocaleString('en-GB');
+  if (field.optionLabels?.[value]) return field.optionLabels[value];
+  return String(value);
+}
 
 // Same pattern as api/book-request.js.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -97,26 +142,10 @@ const asText = (value) => (value == null ? '' : String(value)).replace(/\r\n?/g,
 const isChecked = (value) => value === true || value === 'true' || value === 'on' || value === 'yes';
 const plural = (n) => Number(n).toLocaleString('en-GB');
 
-export const FUND_OPTION = FUND;
-
-// Whether this submission pays online: a support offer to fund bottles,
-// while payments are switched on (STRIPE_SECRET_KEY set on the server).
-export function isDonation(formKey, raw, payments) {
-  return Boolean(payments) && formKey === 'support' && String(raw?.type ?? '').trim() === FUND;
-}
-
-// The field as it applies right now. While someone is donating (payments on
-// and "Fund additional bottles" chosen), the amount becomes a required
-// donation and the offer becomes an optional message.
-export function paymentField(field, payments, raw) {
-  if (!payments || !field.payment || String(raw?.type ?? '').trim() !== FUND) return field;
-  return { ...field, ...field.payment };
-}
-
-// Whether a conditional field currently applies (e.g. amount only for funding).
-export function isActive(field, raw) {
-  if (!field.showIf) return true;
-  return asText(raw?.[field.showIf.field]) === field.showIf.equals;
+// Whether this submission pays online: the Donate page's form, while online
+// payments are switched on (STRIPE_SECRET_KEY set on the server).
+export function isDonation(formKey, payments) {
+  return Boolean(payments) && formKey === 'donation';
 }
 
 // Checks one field. Returns { value } (normalised) or { error }.
@@ -212,17 +241,15 @@ export function checkField(field, rawValue) {
 }
 
 // Validates a whole form. `raw` is a plain object of field name to value.
-// Pass { payments: true } when online payments are on.
-// Returns { values, errors }: values holds only known, active fields, and
+// Returns { values, errors }: values holds only the form's known fields, and
 // errors maps field name to message (empty when the form is valid).
-export function validate(formKey, raw, { payments = false } = {}) {
+export function validate(formKey, raw) {
   const form = FORMS[formKey];
   if (!form) return { values: {}, errors: { form: 'Unknown form' } };
   const values = {};
   const errors = {};
   for (const field of form.fields) {
-    if (!isActive(field, raw)) continue;
-    const result = checkField(paymentField(field, payments, raw), raw?.[field.name]);
+    const result = checkField(field, raw?.[field.name]);
     if (result.error) errors[field.name] = result.error;
     else values[field.name] = result.value;
   }

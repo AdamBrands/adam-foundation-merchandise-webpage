@@ -7,7 +7,7 @@ The page is static HTML and CSS with no framework or build step. A few Vercel Fu
 - `/q/<code>` records a QR scan.
 - `/api/book-request` stores an Adhkar book request and emails the book.
 - `/report` shows scans, requests and opt-ins by QR code.
-- `/kawthar` is the Kawthar campaign page. `/api/kawthar` receives its three forms (see [Kawthar page](#kawthar-page)).
+- `/donate`, `/masjids`, `/bottle` and `/corporate` are the Kawthar campaign pages. `/api/kawthar` receives their forms (see [Kawthar pages](#kawthar-pages)).
 
 Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactional), using the Foundation's existing account.
 
@@ -23,7 +23,8 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `api/cron/weekly-report.js`: Monday email with the weekly summary and a CSV of all requests.
 - `api/cron/keepalive.js`: daily query that stops the free Supabase project pausing.
 - `api/_lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes. The underscore keeps this folder private: Vercel neither publishes it nor turns it into web addresses.
-- `kawthar/`: the Kawthar campaign page (`index.html`, `assets/styles.css`, `assets/app.js`) and `assets/forms.js`, the form fields and validation rules shared by the page and `api/kawthar.js`.
+- `donate/`, `masjids/`, `bottle/`, `corporate/`: the Kawthar pages, each an `index.html` and its own `styles.css`.
+- `kawthar/assets/`: shared by the Kawthar pages. `forms.js` holds the form fields and validation rules, used by the pages and by `api/kawthar.js`. `audience.js` runs the forms, `audience.css` styles their feedback, `form-ui.js` holds browser helpers and `motion.js` runs the illustration animations.
 - `api/kawthar.js`: validates and stores Kawthar form submissions, emails the person and the team, and starts Stripe Checkout for donations. Emails are built in `api/_lib/kawthar-email.js`.
 - `api/stripe-webhook.js`: confirms Kawthar donations from Stripe, then sends the receipt and team notification. Stripe setup is in `api/_lib/stripe.js`.
 - `db/schema.sql`: database tables, row-level security and the `connect_writer` role.
@@ -122,31 +123,38 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
    - Check each scan and request appears under the right source in `/report`.
 7. Delete the test rows, or leave them, since `test` is excluded from reports.
 
-## Kawthar page
+## Kawthar pages
 
-The Kawthar campaign page (COP31 launch, reusable bottles for UK mosques this Ramadan) lives at `/kawthar`, separate from the connect page at `/`. It was ported from the comms team's skin (handover dated 5 November 2026) and has three forms in a modal:
+The Kawthar campaign (COP31 launch, reusable bottles for UK mosques this Ramadan, "Our Earth. Our Amanah.") has four pages, built from the comms team's package `Kawthar_Infographic_Alternative_Package` (8 November 2026). Each has its own colour palette:
 
-| Form | Person receives | Team receives |
-|---|---|---|
-| Mosque bottle application | A copy of their application. Applications are reviewed, so there's no guaranteed allocation. | Notification with every answer |
-| Support offer | A copy of their offer. No payment and no binding pledge. | Notification with every answer |
-| Digital adhkar book | The Adhkar book email (same book as the connect page) | Notification |
+| Page | Audience | Form (key) | Person receives |
+|---|---|---|---|
+| `/donate` | Donors and charities | Donation (`donation`) | Stripe receipt once paid. While payments are off: a copy of their pledge, saying nothing was charged and the team will be in touch. |
+| `/masjids` | UK Masjids | Bottle application (`masjid`) | A copy of their application. Applications are reviewed, so there's no guaranteed allocation. |
+| `/bottle` | People who scan the bottle QR | Adhkar book (`bottle`) | The Adhkar book email (same book as the connect page) |
+| `/corporate` | Companies and organisations | Partnership enquiry (`partner`) | A copy of their enquiry |
 
-- Validation rules live once, in `kawthar/assets/forms.js`. The page applies them as people type and before the review step, with an error summary and inline messages. `api/kawthar.js` applies the same rules again.
-- Every valid submission is stored in `kawthar_submissions`: the answers as JSON, the marketing choice, the exact checkbox wording and `KAWTHAR_CONSENT_VERSION`, the source, the device and the email status. A failed email never loses the submission.
+The team gets a notification with every answer for each submission.
+
+- The page markup is the design's, minus the reviewers' tab bar, the "preview" notes and the animation pause buttons. The pages link to each other only where the design does: Corporate links to Donate and Masjids.
+- The earlier single page at `/kawthar` (5 November 2026) has been removed and that address now shows "page not found". Its stored submissions (`mosque`, `support`, `book`) stay in `kawthar_submissions`.
+- Illustration animations (Donate, Masjids, Corporate) run only while on screen and the tab is visible. With "reduce motion" on, without JavaScript, or in print, the full static illustration shows instead. The animations are CSS in each page's `styles.css`; `kawthar/assets/motion.js` starts and stops them.
+- Validation rules live once, in `kawthar/assets/forms.js`. The pages apply them as people type and before the review step, with an error summary and inline messages. `api/kawthar.js` applies the same rules again.
+- Every valid submission is stored in `kawthar_submissions`: the answers as JSON, the marketing choice, the exact checkbox wording and its version, the source, the device and the email status. A failed email never loses the submission.
   - `sent`: both emails went.
   - `partial`: one email failed. See `email_error`.
   - `failed`: neither email went.
   - `duplicate`: same form and address within 10 minutes. Not re-sent.
+- Each page keeps its design's marketing checkbox wording. The exact text (`AUDIENCE_UPDATES` in `forms.js`) is stored under `AUDIENCE_CONSENT_VERSION`. If you change the wording on a page, change it in `forms.js` to match and bump the version. The page warns in the browser console when the two differ.
 - Team notifications go to `KAWTHAR_NOTIFY_TO` (default `info@adamfoundation.com`), with Reply-To set to the visitor.
 - A hidden honeypot field (`nickname`) catches simple bots.
-- `?src=<code>` on the page is stored as the source (default `kawthar`). `?src=test` marks a submission as a test.
-- If you change the marketing checkbox wording (`UPDATES_LABEL` in `forms.js`), bump `KAWTHAR_CONSENT_VERSION` in `api/_lib/consent.js`.
+- Source: `?src=<code>` (or `?source=<code>`) is stored as the source. Without it the source is `kawthar-donate`, `kawthar-masjids`, `kawthar-bottle` or `kawthar-corporate`. `?src=test` marks a submission as a test. Set the bottle QR code's destination in the RMS portal to `https://connect.adamfoundation.com/bottle?src=<code>`. (`/q/<code>` always forwards to the connect page, so it isn't used here.)
+- The WhatsApp links use the verified Adam Foundation channel. The designs' "Handle / link to add" social tiles are filled where the handle is known (Adam Foundation TikTok and X) and left out otherwise.
 - Kawthar submissions are not in `/report` or the weekly CSV yet.
 
 ### Donations (Stripe)
 
-When `STRIPE_SECRET_KEY` is set, choosing "Fund additional bottles" on the support form becomes a one-off donation of £1 to £10,000, with £10, £25, £50 and £100 shortcuts. The offer text becomes an optional message. Without the key, the option stays an expression of interest, as before.
+When `STRIPE_SECRET_KEY` is set, the Donate page takes a one-off donation of £1 to £10,000, with £10, £25, £50 and £100 shortcuts. Without the key, the gift is recorded as a pledge for the team to follow up.
 
 1. The page asks `GET /api/kawthar` whether payments are on.
 2. On "Continue to secure payment", `api/kawthar.js` stores the submission with `payment_status = 'pending'` and the amount, then opens a Stripe Checkout session (GBP, `submit_type: donate`, expires after an hour). The visitor pays on Stripe's hosted page. Card details never reach this site, and Apple Pay or Google Pay appear when they're enabled in the Stripe Dashboard.
@@ -154,9 +162,9 @@ When `STRIPE_SECRET_KEY` is set, choosing "Fund additional bottles" on the suppo
    - `checkout.session.completed` and `checkout.session.async_payment_succeeded`: the row becomes `paid`, and the donor receipt and team notification go out once only.
    - `checkout.session.async_payment_failed`: the row becomes `failed`.
    - `checkout.session.expired`: the row becomes `expired`.
-4. Back on `/kawthar?donation=success`, the page shows the amount and status. The donation is recorded by the webhook, never by this page. `?donation=cancelled` says nothing was charged and offers to try again.
+4. Back on `/donate?donation=success`, the page shows the amount and status. The donation is recorded by the webhook, never by this page. `?donation=cancelled` says nothing was charged and offers to try again.
 
-Test-mode donations are stored with `is_test = true`.
+Checkout sessions carry `metadata.form = donation`, and a gift made on behalf of someone also carries `on_behalf_of`. Test-mode donations are stored with `is_test = true`.
 
 **Setting up Stripe**
 1. Create a webhook endpoint in the Stripe Dashboard (Developers → Webhooks) for `https://connect.adamfoundation.com/api/stripe-webhook`, listening to the four events above. Make one in test mode for the Preview deployment as well.

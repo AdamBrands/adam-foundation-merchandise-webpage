@@ -1,0 +1,55 @@
+/* Form feedback for the Kawthar audience pages (kawthar/assets/audience.js).
+   Same states and wording as the /kawthar forms, using each page's palette. */
+
+[data-field].is-invalid input:not([type=checkbox]),[data-field].is-invalid select,[data-field].is-invalid textarea{border-color:#d03b3b;background-color:#fffafa}
+[data-field].is-invalid input:not([type=checkbox]):focus,[data-field].is-invalid select:focus,[data-field].is-invalid textarea:focus{box-shadow:0 0 0 4px rgba(208,59,59,.15)}
+[data-field].is-valid input:not([type=checkbox]),[data-field].is-valid textarea{border-color:#2f8f62;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='10' fill='%232f8f62'/%3E%3Cpath d='M5.8 10.3l2.7 2.7 5.7-5.9' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;background-size:18px;padding-right:42px}
+[data-field].is-valid textarea{background-position:right 13px top 13px}
+[data-field].is-valid select{border-color:#2f8f62}
+[data-field].is-valid input:not([type=checkbox]):focus,[data-field].is-valid select:focus,[data-field].is-valid textarea:focus{box-shadow:0 0 0 4px rgba(47,143,98,.14)}
+/* The amount box has its own £ sign, so no tick inside it. */
+[data-field="amount"].is-valid .amount-input{background-image:none;padding-right:12px}
+
+.field-msg{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;font-weight:600;line-height:1.45;color:#b42f2f;max-height:0;opacity:0;overflow:hidden;transform:translateY(-3px);transition:max-height .25s ease,opacity .2s ease,transform .2s ease;margin-top:-4px}
+.field-msg.show{max-height:90px;opacity:1;transform:none;margin-top:0}
+.field-msg::before{content:"";flex:0 0 15px;height:15px;margin-top:1px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='10' fill='%23d03b3b'/%3E%3Cpath d='M10 5.5v5.5' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='14.4' r='1.3' fill='%23fff'/%3E%3C/svg%3E") no-repeat center/15px}
+fieldset[data-field] .field-msg.show{margin-top:8px}
+
+.field-meta{display:flex;justify-content:space-between;gap:12px;font-size:11.5px;font-weight:400;color:var(--muted)}
+.counter{margin-left:auto;font-variant-numeric:tabular-nums;transition:color .2s}
+.counter.ok{color:#2f8f62}.counter.over{color:#b42f2f}
+.suggest{font-size:12.5px;font-weight:400;color:var(--muted)}
+.suggest button{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--accent);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+.check-field{display:flex;flex-direction:column}
+.check-field.is-invalid .check{background:#fdf1f1;border-radius:6px;padding:8px 10px}
+.check-field.is-invalid .check input{outline:2px solid #d03b3b;outline-offset:1px;border-radius:3px}
+.check-field .field-msg{padding-left:29px;margin-top:-10px}
+.check-field .field-msg.show{margin:-8px 0 10px}
+
+.form-note{display:flex;align-items:center;gap:8px;margin:0 0 14px;font-size:13px;font-weight:600;color:#b42f2f}
+.form-note::before{content:"";flex:0 0 16px;height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='10' fill='%23d03b3b'/%3E%3Cpath d='M10 5.5v5.5' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='14.4' r='1.3' fill='%23fff'/%3E%3C/svg%3E") no-repeat center/16px}
+.form-note:empty{display:none}
+.form-alert{display:flex;gap:10px;align-items:flex-start;margin-top:18px;padding:13px 15px;border-radius:10px;background:#fdf1f1;border:1px solid #f1c9c9;font-size:14px;color:#7a2020}
+.form-alert::before{content:"";flex:0 0 17px;height:17px;margin-top:2px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='10' fill='%23d03b3b'/%3E%3Cpath d='M10 5.5v5.5' stroke='%23fff' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='10' cy='14.4' r='1.3' fill='%23fff'/%3E%3C/svg%3E") no-repeat center/17px}
+.form-alert:empty{display:none}
+
+@keyframes nudge{0%,100%{transform:none}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+[data-field].nudge input:not([type=checkbox]),[data-field].nudge select,[data-field].nudge textarea,[data-field].nudge .check{animation:nudge .38s ease}
+@media(prefers-reduced-motion:reduce){.field-msg,[data-field] input,[data-field] select,[data-field] textarea{transition:none}[data-field].nudge *{animation:none!important}}
+
+.trap{position:absolute!important;left:-10000px;width:1px;height:1px;overflow:hidden}
+
+/* Review step, shown in place of the form before sending. */
+.review{background:var(--surface,#f6f3ec);border:1px solid var(--line,#d8d7ce);border-radius:8px;padding:22px;margin-top:18px;color:var(--ink,#183247)}
+.review h3{font-size:21px;margin:0 0 6px}
+.review h3:focus{outline:none}
+.review dl{margin:0}
+.review dt{font-size:11px;font-weight:700;letter-spacing:.3px;color:var(--muted,#536575);margin-top:12px}
+.review dd{margin:3px 0 0;overflow-wrap:anywhere;font-size:14px;white-space:pre-wrap}
+.review-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
+.review-actions .button{flex:1 1 200px}
+.review-actions .button:disabled{opacity:.6;cursor:progress}
+.pay-note{display:flex;gap:9px;align-items:center;margin:16px 0 0;padding:12px 14px;border-radius:8px;background:#eef3ef;font-size:13px;color:#2c4a3a}
+.pay-note::before{content:"🔒";font-size:15px}
+.result [data-result-text]:empty{display:none}
