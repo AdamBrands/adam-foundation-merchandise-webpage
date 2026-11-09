@@ -4,12 +4,8 @@ export const CONSENT_VERSION = '2026-11-v2';
 export const CONSENT_TEXT =
   'Yes, keep me inspired! I’d like to receive email updates about Adam Foundation’s news, events and campaigns.';
 
-// Kawthar page (/kawthar): the "updates" checkbox on all three forms. The
-// wording itself is UPDATES_LABEL in kawthar/assets/forms.js, which api/kawthar.js
-// stores with each submission. Bump this version whenever that wording changes.
-export const KAWTHAR_CONSENT_VERSION = '2026-11-kawthar-v1';
-//
-// The four audience pages (/kawthar/donate, /masjids, /bottle, /corporate)
-// each show their own wording: AUDIENCE_UPDATES in kawthar/assets/forms.js,
-// versioned by AUDIENCE_CONSENT_VERSION there (the page scripts need it too).
+// Kawthar pages (/donate, /masjids, /bottle, /corporate): each shows its own
+// "updates" wording, AUDIENCE_UPDATES in kawthar/assets/forms.js, versioned by
+// AUDIENCE_CONSENT_VERSION there (the page scripts need it too). Rows from the
+// removed /kawthar page keep their own version, '2026-11-kawthar-v1'.
 export { AUDIENCE_CONSENT_VERSION } from '../../kawthar/assets/forms.js';

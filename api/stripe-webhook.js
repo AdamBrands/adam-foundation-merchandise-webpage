@@ -29,8 +29,8 @@ export async function POST(request) {
   }
 
   const session = event.data.object;
-  // "support" is /kawthar's support form, "donation" the /kawthar/donate page.
-  if (session?.object !== 'checkout.session' || !['support', 'donation'].includes(session.metadata?.form)) {
+  // Only Checkout sessions from the Donate page (/donate).
+  if (session?.object !== 'checkout.session' || session.metadata?.form !== 'donation') {
     return Response.json({ received: true, ignored: true });
   }
 

@@ -1,5 +1,4 @@
-// Browser helpers shared by the Kawthar page scripts (app.js for /kawthar and
-// audience.js for the four audience pages).
+// Browser helpers for the Kawthar page script (kawthar/assets/audience.js).
 
 // Common email domains, for "Did you mean …?" when someone mistypes one.
 const DOMAINS = ['gmail.com', 'googlemail.com', 'hotmail.com', 'hotmail.co.uk', 'outlook.com', 'live.com', 'live.co.uk',

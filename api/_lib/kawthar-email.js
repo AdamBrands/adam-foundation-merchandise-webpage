@@ -2,10 +2,10 @@ import { FORMS, displayValue, submitterName } from '../../kawthar/assets/forms.j
 import { escapeHtml } from './request.js';
 import { WHATSAPP } from './email.js';
 
-// Emails for the Kawthar pages (/kawthar and the four audience pages under
-// /kawthar/…): a copy for the person who filled in a form, and a notification
-// to the team for every form. The book forms' own email is bookEmail() in
-// email.js, and donation receipts are sent by donationEmails() below.
+// Emails for the four Kawthar pages (/donate, /masjids, /bottle, /corporate):
+// a copy for the person who filled in a form, and a notification to the team
+// for every form. The bottle QR book email is bookEmail() in email.js, and
+// donation receipts are sent by donationEmails() below.
 
 const SOCIALS = [
   ['WhatsApp channel', WHATSAPP],
@@ -16,7 +16,7 @@ const SOCIALS = [
 ];
 
 // The page a form lives on, as shown in email footers.
-const pageOf = (form) => `connect.adamfoundation.com${FORMS[form]?.page || '/kawthar'}`;
+const pageOf = (form) => `connect.adamfoundation.com${FORMS[form].page}`;
 
 // Team inbox. Comma-separated list allowed; defaults to info@.
 export function notifyRecipients() {
@@ -59,22 +59,6 @@ ${inner}
 const para = (text) => `<p style="margin:0 0 16px;font-size:15px;line-height:1.6">${text}</p>`;
 
 const COPY = {
-  mosque: {
-    subject: 'We’ve received your Kawthar bottle application',
-    heading: 'Application received',
-    lines: (v) => [
-      `Thank you for applying for Kawthar bottles for ${v.mosque}. Our team will review your application and be in touch using the details below.`,
-      'Applications are subject to review and availability, so submitting does not guarantee an allocation.',
-    ],
-  },
-  support: {
-    subject: 'Thank you for offering to support Kawthar',
-    heading: 'Thank you for your support',
-    lines: () => [
-      'Thank you for offering to help Kawthar reach 100,000 bottles. Our team will be in touch to discuss your offer.',
-      'This is an expression of interest only: no payment has been taken and no pledge has been recorded.',
-    ],
-  },
   masjid: {
     subject: 'We’ve received your Kawthar bottle application',
     heading: 'Application received',
@@ -102,7 +86,7 @@ const COPY = {
   },
 };
 
-// Copy of the mosque or support form for the person who sent it.
+// Copy of the Masjid, partnership or pledge form for the person who sent it.
 export function confirmationEmail({ form, values, optIn }) {
   const copy = COPY[form];
   const list = rows(form, values);
@@ -135,9 +119,6 @@ ${para('If anything needs correcting, just reply to this email.')}
 }
 
 const TEAM_SUBJECT = {
-  mosque: (v) => `Kawthar mosque application: ${v.mosque}, ${v.town}`,
-  support: (v) => `Kawthar support offer: ${v.name}${v.org ? ` (${v.org})` : ''} – ${v.type}`,
-  book: (v) => `Kawthar book request: ${v.name}`,
   masjid: (v) => `Kawthar Masjid application: ${v.mosque}, ${v.town} – ${Number(v.quantity).toLocaleString('en-GB')} bottles`,
   partner: (v) => `Kawthar partnership enquiry: ${v.organisation} – ${v.interest}`,
   donation: (v) => `Kawthar pledge: £${Number(v.amount).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} from ${submitterName('donation', v)}`,
@@ -145,9 +126,6 @@ const TEAM_SUBJECT = {
 };
 
 const TEAM_HEADING = {
-  mosque: 'New mosque application',
-  support: 'New offer of support',
-  book: 'New adhkar book request',
   masjid: 'New Masjid application',
   partner: 'New partnership enquiry',
   donation: 'New pledge (payment not taken)',
@@ -192,9 +170,9 @@ export function notificationEmail({ form, values, id, source, personEmailed }) {
 // Sent by api/stripe-webhook.js once Stripe confirms a donation.
 export function donationEmails({ submission, amount, reference }) {
   const values = submission.data;
-  const form = FORMS[submission.form] ? submission.form : 'support';
+  const form = 'donation';
   const name = submitterName(form, values);
-  const org = values.org || values.organisation;
+  const org = values.organisation;
   const optIn = submission.marketing_opt_in;
   const list = rows(form, values, ['amount']);
   const choice = optIn
@@ -206,8 +184,7 @@ export function donationEmails({ submission, amount, reference }) {
   const receiptHtml = layout({
     heading: 'Thank you for your donation',
     intro: para(`Dear ${escapeHtml(name)},`)
-      + para(`Thank you for donating <strong>${escapeHtml(amount)}</strong> to help fund reusable Kawthar bottles for UK mosques this Ramadan. Your gift helps us move from our first 10,000 bottles towards our shared goal of 100,000.`)
-      + (form === 'support' ? para('Our team will also be in touch about the support you described.') : ''),
+      + para(`Thank you for donating <strong>${escapeHtml(amount)}</strong> to help fund reusable Kawthar bottles for UK mosques this Ramadan. Your gift helps us move from our first 10,000 bottles towards our shared goal of 100,000.`),
     inner: `${tableHtml(summary)}
 <p style="margin:8px 0 8px;font-size:13px;font-weight:bold;color:#122d45">Your details</p>${tableHtml(list)}
 ${para('Please keep this email as a record of your donation. If anything needs correcting, just reply to it.')}

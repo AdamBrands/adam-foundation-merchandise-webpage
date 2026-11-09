@@ -1,8 +1,7 @@
-// Kawthar audience pages (/kawthar/donate, /masjids, /bottle, /corporate).
+// Kawthar pages (/donate, /masjids, /bottle, /corporate).
 //
 // The forms are the comms team's design markup. This script gives them the
-// same behaviour as the /kawthar forms (kawthar/assets/app.js): the shared
-// rules in forms.js, errors once a field has been left (green as soon as it is
+// shared rules in forms.js, errors once a field has been left (green as soon as it is
 // right), an error summary, a review step, then /api/kawthar. The Donate page
 // goes on to Stripe Checkout while online payments are on.
 import { FORMS, validate, checkField, isDonation, displayValue } from './forms.js';
@@ -270,8 +269,8 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
   }
 
   function showReview() {
-    const { values } = validate(key, readValues(), { payments });
-    const donating = isDonation(key, values, payments);
+    const { values } = validate(key, readValues());
+    const donating = isDonation(key, payments);
     review = node('div', 'review');
     const heading = node('h3', '', 'Review your details');
     heading.tabIndex = -1;
@@ -393,7 +392,7 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    const { errors } = validate(key, readValues(), { payments });
+    const { errors } = validate(key, readValues());
     if (Object.keys(errors).length) showErrors(errors);
     else showReview();
   });

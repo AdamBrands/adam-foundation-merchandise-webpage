@@ -3,9 +3,7 @@ import Stripe from 'stripe';
 // Stripe Checkout for Kawthar bottle donations.
 //
 // Payments are switched on only when STRIPE_SECRET_KEY is set. Without it the
-// support form's "Fund additional bottles" option stays an expression of
-// interest, and the Donate page (/kawthar/donate) records a pledge for the
-// team to follow up. Use a restricted key (rk_…) with only the
+// Donate page records a pledge for the team to follow up. Use a restricted key (rk_…) with only the
 // permissions this needs: Checkout Sessions write, PaymentIntents read.
 // Keep test keys in Vercel's Preview environment only, so the live site never
 // takes test payments.
@@ -40,9 +38,8 @@ const INTEGRATION_ID = 'kawthar-donation-qtrbwmzk';
 
 // Creates the hosted Checkout page for one donation. The idempotency key
 // means a retried request for the same submission never makes a second session.
-// `form` is "support" (/kawthar) or "donation" (/kawthar/donate), and
 // `returnPath` is the page the donor comes back to afterwards.
-export async function createDonationSession({ id, form = 'support', values, source, origin, returnPath = '/kawthar' }) {
+export async function createDonationSession({ id, form = 'donation', values, source, origin, returnPath = '/donate' }) {
   const pence = toPence(values.amount);
   const onBehalfOf = values.dedication ? { on_behalf_of: String(values.dedication).slice(0, 150) } : {};
   return stripeClient().checkout.sessions.create({
