@@ -16,6 +16,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `index.html`: the page. Includes the Adhkar book form (`#adhkar-book`).
 - `assets/css/styles.css`: responsive styles scoped to `#af-discover`.
 - `assets/js/book.js`: submits the book form without leaving the page and shows the confirmation. Without JavaScript, the form posts normally.
+- `assets/js/clean-url.js`: loaded by every page. Removes tracking parameters from the address bar when the page opens: Google's `_gl` (added by the Site Kit tag on adamfoundation.com to every link here) and ad click IDs such as `gclid` and `fbclid`. `?src=` and `utm_*` stay. Nothing on this site reads the removed parameters. If analytics is added to these pages, revisit the list first.
 - `assets/images/`: logos, Westminster banner, Westminster skyline border and WhatsApp QR image.
 - `api/scan.js`: logs a scan (code, device type, time; no IP addresses or cookies), then redirects to `/?src=<code>`. Link previews and bots are redirected but not logged, using the same rules as the RMS portal's dynamic QR counter.
 - `api/book-request.js`: validates the email, stores the request and marketing choice, and sends the book.
@@ -148,7 +149,7 @@ The team gets a notification with every answer for each submission.
 - Each page keeps its design's marketing checkbox wording. The exact text (`AUDIENCE_UPDATES` in `forms.js`) is stored under `AUDIENCE_CONSENT_VERSION`. If you change the wording on a page, change it in `forms.js` to match and bump the version. The page warns in the browser console when the two differ.
 - Team notifications go to `KAWTHAR_NOTIFY_TO` (default `info@adamfoundation.com`), with Reply-To set to the visitor.
 - A hidden honeypot field (`nickname`) catches simple bots.
-- Source: `?src=<code>` (or `?source=<code>`) is stored as the source. Without it the source is `kawthar-donate`, `kawthar-masjids`, `kawthar-bottle` or `kawthar-corporate`. `?src=test` marks a submission as a test. Set the bottle QR code's destination in the RMS portal to `https://connect.adamfoundation.com/bottle?src=<code>`. (`/q/<code>` always forwards to the connect page, so it isn't used here.)
+- Source: `?src=<code>` (or `?source=<code>`) is stored as the source. Without it the source is `kawthar-donate`, `kawthar-masjids`, `kawthar-bottle` or `kawthar-corporate`. `?src=test` marks a submission as a test. Set the bottle QR code's destination in the RMS portal to `https://connect.adamfoundation.com/bottle?src=<code>`. (`/q/<code>` always forwards to the connect page, so it isn't used here.) The "Discover values. Get your free Adhkar book" button on the adamfoundation.com homepage (Elementor, page 10274) links to `/corporate?src=website-homepage`.
 - Social links in the organisation cards (Bottle QR and Corporate) show as a row of full-colour brand logos (44px touch targets) in place of the designs' single-colour icons, and unknown channels are left out rather than shown as greyed-out placeholders. Each logo's label and tooltip still name the network and handle. The WhatsApp links use the verified Adam Foundation channel. The designs' "Handle / link to add" placeholders are filled where the handle is known (Adam Foundation TikTok and X) and left out otherwise.
 - Kawthar submissions are not in `/report` or the weekly CSV yet.
 
