@@ -58,8 +58,8 @@ fieldset[data-field] .field-msg.show{margin-top:8px}
    brand logos instead of the designs' long handle rows. Each link's
    aria-label and tooltip still give the network and handle. */
 .icon-sprite{position:absolute;width:0;height:0;overflow:hidden}
-.organisation-socials.social-icons{flex-direction:row;flex-wrap:wrap;gap:12px;padding-top:18px}
-.social-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;transition:transform .15s ease,box-shadow .15s ease}
+.organisation-socials.social-icons{flex-direction:row;flex-wrap:wrap;gap:8px;padding-top:16px}
+.social-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;transition:transform .15s ease,box-shadow .15s ease}
 .social-icon svg{width:36px;height:36px;display:block}
 .social-icon:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
 .social-icon:focus-visible{outline:2px solid var(--accent,#264f70);outline-offset:3px}
