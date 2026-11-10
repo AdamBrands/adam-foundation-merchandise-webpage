@@ -125,7 +125,7 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 
 ## Kawthar pages
 
-The Kawthar campaign (COP31 launch, reusable bottles for UK mosques this Ramadan, "Our Earth. Our Amanah.") has four pages, built from the comms team's package `Kawthar_Infographic_Alternative_Package` (8 November 2026). Each has its own colour palette:
+The Kawthar campaign ("Our Earth. Our Amanah.") is the reusable bottle initiative within Shared Values, an Adam Foundation campaign inspired by Avicenna Scholars, planned to launch from COP31 with bottle distribution from January 2027 for Ramadan. It has four pages, built from the comms team's package `Kawthar_Infographic_Alternative_Package` (latest copy 9 November 2026, with the Shared Values wording). Each has its own colour palette:
 
 | Page | Audience | Form (key) | Person receives |
 |---|---|---|---|
@@ -149,7 +149,7 @@ The team gets a notification with every answer for each submission.
 - Team notifications go to `KAWTHAR_NOTIFY_TO` (default `info@adamfoundation.com`), with Reply-To set to the visitor.
 - A hidden honeypot field (`nickname`) catches simple bots.
 - Source: `?src=<code>` (or `?source=<code>`) is stored as the source. Without it the source is `kawthar-donate`, `kawthar-masjids`, `kawthar-bottle` or `kawthar-corporate`. `?src=test` marks a submission as a test. Set the bottle QR code's destination in the RMS portal to `https://connect.adamfoundation.com/bottle?src=<code>`. (`/q/<code>` always forwards to the connect page, so it isn't used here.)
-- Social links in the organisation cards (Bottle QR and Corporate) show as a row of brand logos rather than the designs' handle rows. Each logo's label and tooltip still name the network and handle. The WhatsApp links use the verified Adam Foundation channel. The designs' "Handle / link to add" placeholders are filled where the handle is known (Adam Foundation TikTok and X) and left out otherwise.
+- Social links in the organisation cards (Bottle QR and Corporate) show as a row of full-colour brand logos (44px touch targets) in place of the designs' single-colour icons, and unknown channels are left out rather than shown as greyed-out placeholders. Each logo's label and tooltip still name the network and handle. The WhatsApp links use the verified Adam Foundation channel. The designs' "Handle / link to add" placeholders are filled where the handle is known (Adam Foundation TikTok and X) and left out otherwise.
 - Kawthar submissions are not in `/report` or the weekly CSV yet.
 
 ### Donations (Stripe)
