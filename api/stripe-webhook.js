@@ -77,7 +77,7 @@ async function fulfil(session) {
 
   const [submission] = rows;
   const amount = formatGBP(session.amount_total ?? 0);
-  const { receipt, notify } = donationEmails({ submission, amount, reference: paymentIntent || session.id });
+  const { receipt, notify } = donationEmails({ submission, amount, amountPence: session.amount_total ?? 0, reference: paymentIntent || session.id });
 
   const ids = [];
   const problems = [];

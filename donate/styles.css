@@ -768,3 +768,38 @@
 @keyframes kw-bin-open{0%,64%,87%,100%{transform:rotate(0deg)}69%,80%{transform:rotate(-12deg)}}
 @keyframes kw-waste-bob{0%,66%,100%{transform:translateY(0) rotate(0deg)}74%,91%{transform:translateY(-4px) rotate(-5deg)}82%{transform:translateY(1px) rotate(2deg)}}
 @keyframes kw-waste-wave{0%,66%,100%{transform:translateY(0)}74%,91%{transform:translateY(-2px)}82%{transform:translateY(1px)}}
+
+
+/* Optional Gift Aid, inside the existing donor details pop-up. */
+.donation-dialog .gift-aid {margin:26px 0; padding:24px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--ink)}
+.gift-aid-heading {display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:10px}
+.gift-aid-heading h3 {font:26px/1.2 Georgia,serif; margin:0; letter-spacing:-.02em}
+.gift-aid-badge {flex-shrink:0; padding:6px 10px; background:var(--accent); color:white; font-size:12px; font-weight:700; border-radius:20px}
+.gift-aid-intro {font-size:13px; color:var(--muted); margin-bottom:18px}
+.gift-aid-impact {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid var(--line); border-radius:8px; background:var(--paper); margin:0 0 20px; padding:16px 4px}
+.gift-aid-impact>div {padding:0 10px; min-width:0}
+.gift-aid-impact>div+div {border-left:1px solid var(--line)}
+.gift-aid-impact dt {font-size:11px; line-height:1.4; color:var(--muted); margin-bottom:7px}
+.gift-aid-impact dd {font:24px/1.25 Georgia,serif; margin:0; color:var(--accent); overflow-wrap:anywhere}
+.gift-aid .gift-aid-choice {color:var(--ink); font-size:14px; font-weight:600; margin:0 0 12px; padding:8px 0; min-height:44px; align-items:center; cursor:pointer}
+.gift-aid-choice input {width:20px; height:20px; margin:0}
+.gift-aid-declaration {font-size:13px; line-height:1.65}
+.gift-aid-declaration p {margin-bottom:12px}
+.gift-aid-eligibility,.gift-aid-help,.gift-aid-address-note {font-size:12px; line-height:1.65; color:var(--muted)}
+.gift-aid-help {margin:16px 0 0}
+.gift-aid-address {border:0; border-top:1px solid var(--line); padding:20px 0 0; margin:22px 0 0; min-width:0}
+.gift-aid-address legend {float:left; width:100%; font-size:15px; font-weight:600; margin-bottom:8px; padding:0}
+.gift-aid-address-note {clear:both; margin-bottom:10px}
+.donation-dialog .gift-aid-address .fields {margin:16px 0 0}
+.gift-aid .field input {font-size:16px}
+.gift-aid .field-hint {font-size:11px; line-height:1.5; color:var(--muted)}
+.gift-aid-selected-note {font-size:12px; color:var(--accent); margin:14px 0 0; font-weight:600}
+@media(max-width:560px) {
+ .donation-dialog .gift-aid {padding:18px 14px}
+ .gift-aid-heading h3 {font-size:24px}
+ .gift-aid-impact {grid-template-columns:1fr; padding:4px 14px}
+ .gift-aid-impact>div {display:flex; align-items:baseline; justify-content:space-between; gap:16px; padding:12px 0}
+ .gift-aid-impact>div+div {border-left:0; border-top:1px solid var(--line)}
+ .gift-aid-impact dt {margin:0; font-size:12px}
+ .gift-aid-impact dd {font-size:23px}
+}

@@ -3,7 +3,7 @@ import { bookEmail, sendEmail } from './_lib/email.js';
 import { confirmationEmail, notificationEmail } from './_lib/kawthar-email.js';
 import { cleanCode, deviceFrom } from './_lib/request.js';
 import { createDonationSession, formatGBP, paymentsEnabled, stripeClient, testMode, toPence } from './_lib/stripe.js';
-import { FORMS, consentFor, isDonation, submitterName, validate } from '../kawthar/assets/forms.js';
+import { FORMS, GIFT_AID, consentFor, gbp, isDonation, submitterName, validate } from '../kawthar/assets/forms.js';
 
 const MAX_BODY = 32 * 1024;
 
@@ -48,6 +48,18 @@ export async function POST(request) {
   const { values, errors } = validate(form, data);
   if (Object.keys(errors).length) {
     return reply(422, { message: 'Please correct the highlighted answers.', errors });
+  }
+
+  // Gift Aid: the declaration is recorded here, with the server's time, not
+  // taken from the browser. It is stored with the donation (data jsonb) and
+  // covers this donation only. Unticked donations carry gift_aid: false.
+  if (form === 'donation' && values.gift_aid) {
+    values.gift_aid_declaration = {
+      text: GIFT_AID.declaration(gbp(values.amount)),
+      version: GIFT_AID.version,
+      scope: GIFT_AID.scope,
+      declared_at: new Date().toISOString(),
+    };
   }
 
   const source = cleanCode(payload.source) || 'kawthar';
