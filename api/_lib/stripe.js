@@ -25,7 +25,8 @@ export function stripeClient() {
   return client;
 }
 
-export const testMode = () => /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY || '');
+// Matches every test key prefix: sk_test_, rk_test_, and newer ones such as rkcs_test_.
+export const testMode = () => /^[a-z]+_test_/.test(process.env.STRIPE_SECRET_KEY || '');
 
 export const toPence = (pounds) => Math.round(Number(pounds) * 100);
 
