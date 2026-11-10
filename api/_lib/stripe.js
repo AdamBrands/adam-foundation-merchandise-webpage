@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { giftAidPence } from '../../kawthar/assets/forms.js';
 
 // Stripe Checkout for Kawthar bottle donations.
 //
@@ -43,6 +44,12 @@ const INTEGRATION_ID = 'kawthar-donation-qtrbwmzk';
 export async function createDonationSession({ id, form = 'donation', values, source, origin, returnPath = '/donate' }) {
   const pence = toPence(values.amount);
   const onBehalfOf = values.dedication ? { on_behalf_of: String(values.dedication).slice(0, 150) } : {};
+  // Stripe has no Gift Aid feature: the Foundation claims it from HMRC using the
+  // declaration stored with the submission. These tags let the Dashboard and its
+  // exports show which payments carry a declaration. No address goes to Stripe.
+  const giftAid = values.gift_aid
+    ? { gift_aid: 'yes', gift_aid_declaration: values.gift_aid_declaration?.version ?? '', gift_aid_value: formatGBP(giftAidPence(pence)) }
+    : { gift_aid: 'no' };
   return stripeClient().checkout.sessions.create({
     mode: 'payment',
     submit_type: 'donate',
@@ -59,11 +66,16 @@ export async function createDonationSession({ id, form = 'donation', values, sou
     }],
     customer_email: values.email,
     client_reference_id: String(id),
-    metadata: { submission_id: String(id), form, source, ...onBehalfOf },
+    metadata: { submission_id: String(id), form, source, ...onBehalfOf, ...giftAid },
     payment_intent_data: {
-      description: `Kawthar bottle donation #${id}`,
-      metadata: { submission_id: String(id), source, ...onBehalfOf },
+      description: `Kawthar bottle donation #${id}${values.gift_aid ? ' (Gift Aid)' : ''}`,
+      metadata: { submission_id: String(id), source, ...onBehalfOf, ...giftAid },
     },
+    ...(values.gift_aid ? {
+      custom_text: {
+        submit: { message: `You’ve added Gift Aid. You pay ${formatGBP(pence)}, and Adam Foundation can claim a further ${formatGBP(giftAidPence(pence))} from HMRC at no extra cost to you.` },
+      },
+    } : {}),
     success_url: `${origin}${returnPath}?donation=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}${returnPath}?donation=cancelled`,
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour

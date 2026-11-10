@@ -4,7 +4,7 @@
 // shared rules in forms.js, errors once a field has been left (green as soon as it is
 // right), an error summary, a review step, then /api/kawthar. The Donate page
 // goes on to Stripe Checkout while online payments are on.
-import { FORMS, validate, checkField, isDonation, displayValue } from './forms.js';
+import { FORMS, GIFT_AID, validate, checkField, isDonation, displayValue, gbp, giftAidPence, ukCountry } from './forms.js';
 import { suggestEmail, sourceFrom } from './form-ui.js';
 
 // data-kind in the design markup → form key in forms.js.
@@ -122,7 +122,7 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
       suggest.setAttribute('aria-live', 'polite');
       box.append(suggest);
     }
-    if (field.kind === 'postcode') input.autocapitalize = 'characters';
+    if (field.kind === 'postcode' || field.kind === 'homepostcode') input.autocapitalize = 'characters';
     if (field.kind === 'longtext') {
       const meta = node('div', 'field-meta');
       if (field.min) meta.append(node('span', 'min-hint', `At least ${field.min} characters`));
@@ -172,7 +172,7 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
     const field = fieldOf(name);
     if (!field) return true;
     const value = valueOf(field);
-    const { error } = checkField(field, value);
+    const { error } = checkField(field, value, readValues());
     const empty = field.kind === 'checkbox' ? !value : String(value).trim() === '';
     if (error) paint(name, touched.has(name) ? 'invalid' : 'neutral', error);
     else paint(name, empty ? 'neutral' : 'valid');
@@ -233,7 +233,7 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
     const { name } = event.target;
     const field = name && fieldOf(name);
     if (!field) return;
-    if (field.kind === 'postcode') {
+    if (field.kind === 'postcode' || field.kind === 'homepostcode') {
       // Upper case as they type, keeping the cursor where it was.
       const input = event.target;
       const pos = input.selectionStart;
@@ -279,6 +279,13 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
       if (!(field.name in values) || (values[field.name] === '' && field.name === 'partnership_path')) return;
       dl.append(node('dt', '', field.label.replace(/ \(optional\)$/i, '')), node('dd', '', displayValue(field, values[field.name])));
     });
+    // Gift Aid never changes what the donor pays.
+    const giftAidNote = node('p', 'gift-aid-selected-note');
+    if (values.gift_aid) {
+      const extra = giftAidPence(Math.round(values.amount * 100)) / 100;
+      giftAidNote.textContent = `Gift Aid added. Your payment stays ${gbp(values.amount)}; Gift Aid could add ${gbp(extra)}, making ${gbp(values.amount + extra)} for Kawthar at no extra cost to you.`;
+    }
+    giftAidNote.hidden = !values.gift_aid;
     const payNote = node('p', 'pay-note', 'You’ll donate on a secure page run by Stripe. We never see your card details.');
     payNote.hidden = !donating;
     const alert = node('div', 'form-alert');
@@ -293,7 +300,7 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
     back.type = 'button';
     confirm.type = 'button';
     actions.append(back, confirm);
-    review.append(heading, dl, payNote, alert, actions);
+    review.append(heading, dl, giftAidNote, payNote, alert, actions);
     form.hidden = true;
     form.after(review);
     heading.focus({ preventScroll: true });
@@ -477,6 +484,7 @@ if (donorDialog && amountForm && detailsForm) {
     },
   });
   const amountField = donation.config.fields.find((f) => f.name === 'amount');
+  const giftAid = setupGiftAid(detailsForm, donation);
 
   const syncPresets = () => amountForm.querySelectorAll('[data-amount]').forEach((b) => {
     b.setAttribute('aria-pressed', String(amountInput.value !== '' && Number(b.dataset.amount) === Number(amountInput.value)));
@@ -500,6 +508,7 @@ if (donorDialog && amountForm && detailsForm) {
     }
     donation.prepare();
     detailsForm.elements.amount.value = String(value);
+    giftAid?.setAmount(value);
     donorDialog.element.querySelector('[data-donation-total]').textContent = currency(value);
     if (selection) selection.hidden = false;
     if (intro) intro.hidden = false;
@@ -547,6 +556,70 @@ if (donorDialog && amountForm && detailsForm) {
       });
     }
   }
+}
+
+// Gift Aid box in the donor details dialog: shows what Gift Aid could add,
+// opens the home address when ticked and makes the postcode required for a UK
+// home country. Validation itself is in forms.js, and the server records the
+// declaration, so nothing here is trusted for the claim.
+function setupGiftAid(form, donation) {
+  const choice = form.elements.gift_aid;
+  const address = document.getElementById('df-gift-aid-address');
+  if (!choice || !address) return null;
+  const country = form.elements.country;
+  const postcodeMark = form.querySelector('[data-postcode-required]');
+  const fields = donation.config.fields.filter((f) => f.giftAid);
+  const show = (selector, text) => form.querySelectorAll(selector).forEach((el) => { el.textContent = text; });
+  let amount = Number(form.elements.amount.value) || 0;
+
+  const section = form.querySelector('.gift-aid');
+  if (section && section.dataset.declarationVersion !== GIFT_AID.version) {
+    console.warn('Kawthar donation form: the Gift Aid declaration version differs from GIFT_AID in forms.js');
+  }
+
+  function sync() {
+    const active = choice.checked;
+    const ukHome = !country.value.trim() || ukCountry(country.value);
+    address.hidden = !active;
+    address.disabled = !active;
+    if (postcodeMark) postcodeMark.hidden = !ukHome;
+    for (const field of fields) {
+      const input = form.elements[field.name];
+      if (!input) continue;
+      const required = active && (field.kind === 'homepostcode' ? ukHome : field.required);
+      if (required) input.setAttribute('aria-required', 'true');
+      else input.removeAttribute('aria-required');
+      if (donation.touched.has(field.name)) donation.evaluate(field.name);
+    }
+    const extra = giftAidPence(Math.round(amount * 100)) / 100;
+    show('[data-gift-aid-donation]', gbp(amount));
+    show('[data-gift-aid-declaration-amount]', gbp(amount));
+    show('[data-gift-aid-extra]', gbp(extra));
+    show('[data-gift-aid-total]', gbp(amount + extra));
+    show('[data-gift-aid-status]', active
+      ? `Gift Aid selected. Your payment stays ${gbp(amount)}; Gift Aid could add ${gbp(extra)}.`
+      : `Gift Aid is optional. Your payment stays ${gbp(amount)}.`);
+  }
+
+  choice.addEventListener('change', sync);
+  country.addEventListener('input', sync);
+  form.addEventListener('reset', () => queueMicrotask(sync));
+  sync();
+
+  const wording = ['df-gift-aid-declaration', 'df-gift-aid-tax', 'df-gift-aid-eligibility']
+    .map((id) => document.getElementById(id)?.textContent.replace(/\s+/g, ' ').trim()).join(' ');
+  if (wording !== GIFT_AID.declaration(gbp(amount))) {
+    console.warn('Kawthar donation form: the Gift Aid wording differs from GIFT_AID.declaration in forms.js');
+  }
+
+  return {
+    // A declaration covers one donation of one amount, so a new amount needs a fresh tick.
+    setAmount(value) {
+      if (Number(value) !== amount) choice.checked = false;
+      amount = Number(value);
+      sync();
+    },
+  };
 }
 
 // Buttons start disabled in the markup, so nothing is submitted before this

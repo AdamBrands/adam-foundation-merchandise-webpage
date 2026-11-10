@@ -172,6 +172,29 @@ Checkout sessions carry `metadata.form = donation`, and a gift made on behalf of
 2. Put the keys and signing secrets in Vercel. Test values go in Preview, live values in Production, and all are marked Sensitive. Never commit them.
 3. Before going live, check that the payment methods are on in the Stripe Dashboard, and that the Foundation's public details are right: name, statement descriptor, support email and charity status.
 
+### Gift Aid
+
+Stripe has no Gift Aid feature. It takes the payment, and the Foundation claims Gift Aid from HMRC itself (Charities Online), using the declarations this site records. The donor always pays the amount they chose; Gift Aid adds 25p per £1 on top, from HMRC.
+
+1. The Donate page's details dialog has an optional "Yes, add Gift Aid to this donation" box. Ticking it opens a home address (house and street, town and postcode required; the postcode only for a UK home country, which is the form's "Home country").
+2. `kawthar/assets/forms.js` checks the address on the page and again on the server. Unticked, the address is not stored.
+3. `api/kawthar.js` records the declaration with the donation in `kawthar_submissions.data`: `gift_aid: true`, the address fields and `gift_aid_declaration` (the exact wording with the amount, its version, `single_donation` and the server's time). The wording lives in `GIFT_AID` in `forms.js` and must match the page. If it changes, bump the version there and in the page's `data-declaration-version`.
+4. The Checkout session and payment carry `gift_aid` (`yes`/`no`), `gift_aid_declaration` (version) and `gift_aid_value`, so the Stripe Dashboard shows which payments have a declaration, and Checkout shows a Gift Aid note above the pay button. No address goes to Stripe.
+5. The receipt quotes the declaration and asks the donor to say if their details change. The team notification shows the claimable amount and the declaration's version and time.
+6. A changed amount clears the tick, because a declaration covers one donation.
+
+To list paid donations for a claim (name, address, amount, payment date):
+
+```sql
+select id, name, data->>'gift_aid_address_line_1' as address, data->>'gift_aid_postcode' as postcode,
+       amount_pence / 100.0 as amount, paid_at, data->'gift_aid_declaration' as declaration
+from kawthar_submissions
+where form = 'donation' and payment_status = 'paid' and not is_test and (data->>'gift_aid')::boolean
+order by paid_at;
+```
+
+Before claiming, confirm the charity's HMRC Gift Aid registration and that the privacy policy covers Gift Aid. HMRC guidance: https://www.gov.uk/guidance/gift-aid-declarations-claiming-tax-back-on-donations
+
 ## Design notes
 
 The layout is mobile first, with a maximum content width of 510px. The palette is white `#ffffff`, navy `#061238`, blue `#0055b8` / `#0055a7` and gold `#ad8c60`. These are implementation colours matched to the brochure, not a certified brand palette. Logos are raster extracts from the supplied brochure. If master SVGs or high-resolution transparent PNGs become available, swap them in without redrawing or recolouring.

@@ -15,12 +15,39 @@ export const AUDIENCE_UPDATES = {
 };
 export const AUDIENCE_CONSENT_VERSION = '2026-11-kawthar-audience-v1';
 
+// Gift Aid on the Donate page. `declaration` is the wording of the page's Gift
+// Aid box, word for word, with the amount filled in. api/kawthar.js stores it,
+// with this version and the server's time, on every donation where the box is
+// ticked; audience.js warns in the console if the page's wording differs. If the
+// wording changes, update the page to match and bump the version (also the
+// page's data-declaration-version). A declaration covers that donation only.
+export const GIFT_AID = {
+  version: '2026-11-10-v1',
+  scope: 'single_donation',
+  declaration: (amount) => [
+    `I want to Gift Aid this donation of ${amount} to Adam Foundation (The Adam Legacy Foundation).`,
+    'I am a UK taxpayer and understand that if I pay less Income Tax and/or Capital Gains Tax in the current tax year than the amount of Gift Aid claimed on all my donations it is my responsibility to pay any difference.',
+    'By ticking, I confirm this is my own money, not a company donation or money collected from others. If you’re not eligible or are unsure, leave the box unticked. You can still donate.',
+  ].join(' '),
+};
+
+// Gift Aid adds 25p for every £1 given. The donor's payment never changes.
+export const giftAidPence = (pence) => Math.round(Number(pence) / 4);
+export const gbp = (pounds) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Number(pounds));
+
+// Whether a typed home country is the UK, so the Gift Aid postcode is required.
+export function ukCountry(value) {
+  const text = String(value ?? '').trim().toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ');
+  return /^(uk|u k|gb|gbr|the uk|united kingdom|the united kingdom|united kingdom of great britain and northern ireland|great britain|britain|england|scotland|wales|northern ireland)$/.test(text);
+}
+
 // Field options:
 //   name, label, kind, required
 //   noun     words used in "Enter …" / "Select …" messages
 //   min/max  length for text, value for numbers
 //   options  for selects (optionLabels: how a value reads in reviews and emails)
 //   presets  suggested amounts for money
+//   giftAid  counts only when the donor ticks Gift Aid (otherwise left out)
 export const FORMS = {
   // The four Kawthar pages (/donate, /masjids, /bottle, /corporate).
   // Their fields and checkbox wording come from the comms team's designs, and
@@ -84,7 +111,14 @@ export const FORMS = {
       { name: 'last_name', label: 'Last name', kind: 'person', required: true, noun: 'your last name', min: 1, max: 100 },
       { name: 'email', label: 'Email address', kind: 'email', required: true, noun: 'your email address' },
       { name: 'phone', label: 'Phone number (optional)', kind: 'phone', required: false, noun: 'a phone number' },
-      { name: 'country', label: 'Country', kind: 'text', required: true, noun: 'your country', min: 2, max: 100 },
+      { name: 'country', label: 'Home country', kind: 'text', required: true, noun: 'your home country', min: 2, max: 100 },
+      { name: 'gift_aid', label: 'Gift Aid', kind: 'checkbox', required: false },
+      { name: 'gift_aid_address_line_1', label: 'Home address', kind: 'address', required: true, giftAid: true, noun: 'your house number or name and street', min: 3, max: 200 },
+      { name: 'gift_aid_address_line_2', label: 'Address line 2 (optional)', kind: 'address', required: false, giftAid: true, noun: 'address line 2', min: 1, max: 200 },
+      { name: 'gift_aid_city', label: 'Town or city', kind: 'text', required: true, giftAid: true, noun: 'your town or city', min: 2, max: 100 },
+      { name: 'gift_aid_region', label: 'County, state or region (optional)', kind: 'text', required: false, giftAid: true, noun: 'your county, state or region', min: 2, max: 100 },
+      // Required for a UK home address (see ukCountry); optional overseas.
+      { name: 'gift_aid_postcode', label: 'Postcode', kind: 'homepostcode', required: false, giftAid: true, noun: 'your postcode' },
       { name: 'organisation', label: 'Organisation name (optional)', kind: 'text', required: false, noun: 'the organisation’s name', min: 2, max: 160 },
       { name: 'dedication', label: 'On behalf of (optional)', kind: 'text', required: false, noun: 'the name the gift is on behalf of', min: 2, max: 150 },
       { name: 'message', label: 'Anything you would like us to know? (optional)', kind: 'longtext', required: false, noun: 'your message', max: 1000 },
@@ -148,8 +182,12 @@ export function isDonation(formKey, payments) {
   return Boolean(payments) && formKey === 'donation';
 }
 
-// Checks one field. Returns { value } (normalised) or { error }.
-export function checkField(field, rawValue) {
+// Checks one field. Returns { value } (normalised) or { error }. `all` holds
+// the form's other raw answers, for fields that depend on them: the Gift Aid
+// address counts only when Gift Aid is ticked ({ skip: true } otherwise), and
+// its postcode is required for a UK home address.
+export function checkField(field, rawValue, all = {}) {
+  if (field.giftAid && !isChecked(all?.gift_aid)) return { value: '', skip: true };
   if (field.kind === 'checkbox') {
     const checked = isChecked(rawValue);
     if (field.required && !checked) return { error: field.message || `Tick “${field.label}”` };
@@ -157,8 +195,9 @@ export function checkField(field, rawValue) {
   }
 
   const text = asText(rawValue);
+  const ukHome = field.kind === 'homepostcode' && ukCountry(all?.country);
   if (!text) {
-    if (!field.required) return { value: field.kind === 'int' || field.kind === 'money' ? null : '' };
+    if (!field.required && !ukHome) return { value: field.kind === 'int' || field.kind === 'money' ? null : '' };
     return { error: `${field.kind === 'select' ? 'Select' : 'Enter'} ${field.noun}` };
   }
   if (CONTROL_RE.test(text)) return { error: `Remove any unusual characters from ${field.noun}` };
@@ -187,6 +226,21 @@ export function checkField(field, rawValue) {
       }
       return { value: text };
     }
+    case 'address': {
+      if (!/[\p{L}\p{N}]/u.test(text)) return { error: `Enter ${field.noun}` };
+      if (text.length < field.min) return { error: `${capital(field.noun)} must be at least ${field.min} characters` };
+      if (text.length > field.max) return { error: `${capital(field.noun)} must be ${field.max} characters or fewer` };
+      return { value: text.replace(/\s+/g, ' ') };
+    }
+    case 'homepostcode': {
+      if (!ukHome) {
+        if (!/^[\p{L}\p{N}][\p{L}\p{N} -]{0,29}$/u.test(text)) {
+          return { error: 'Enter a postal code using letters, numbers, spaces and hyphens' };
+        }
+        return { value: text.replace(/\s+/g, ' ').toUpperCase() };
+      }
+    }
+    // falls through: a UK home postcode is checked like any UK postcode
     case 'postcode': {
       const compact = text.replace(/\s+/g, '').toUpperCase();
       if (!POSTCODE_RE.test(compact)) return { error: 'Enter a real UK postcode, like SW1P 4QP' };
@@ -249,7 +303,8 @@ export function validate(formKey, raw) {
   const values = {};
   const errors = {};
   for (const field of form.fields) {
-    const result = checkField(field, raw?.[field.name]);
+    const result = checkField(field, raw?.[field.name], raw);
+    if (result.skip) continue;
     if (result.error) errors[field.name] = result.error;
     else values[field.name] = result.value;
   }

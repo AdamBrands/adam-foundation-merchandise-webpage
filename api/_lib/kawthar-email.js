@@ -1,4 +1,4 @@
-import { FORMS, displayValue, submitterName } from '../../kawthar/assets/forms.js';
+import { FORMS, displayValue, gbp, giftAidPence, submitterName } from '../../kawthar/assets/forms.js';
 import { escapeHtml } from './request.js';
 import { WHATSAPP } from './email.js';
 
@@ -167,8 +167,29 @@ export function notificationEmail({ form, values, id, source, personEmailed }) {
   };
 }
 
+// Gift Aid lines for the donor's receipt and the team: what was declared and
+// what it is worth on the amount actually paid.
+function giftAidDetails(values, amountPence) {
+  const declaration = values.gift_aid ? values.gift_aid_declaration : null;
+  if (!declaration) return { rows: [['Gift Aid', 'Not added']], paras: [], team: [['Gift Aid', 'Not added']] };
+  const extra = gbp(giftAidPence(amountPence) / 100);
+  const when = new Date(declaration.declared_at).toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'long', timeStyle: 'short' });
+  return {
+    rows: [['Gift Aid', `Yes. Adam Foundation can claim ${extra} at no extra cost to you`]],
+    paras: [
+      'Your Gift Aid declaration (this donation only):',
+      `“${declaration.text}”`,
+      'Please tell us if your name, home address or tax circumstances change, or if you want to cancel this declaration. Just reply to this email.',
+    ],
+    team: [
+      ['Gift Aid', `Yes: claimable ${extra}`],
+      ['Declaration', `Version ${declaration.version}, made ${when} (UK time)`],
+    ],
+  };
+}
+
 // Sent by api/stripe-webhook.js once Stripe confirms a donation.
-export function donationEmails({ submission, amount, reference }) {
+export function donationEmails({ submission, amount, amountPence = 0, reference }) {
   const values = submission.data;
   const form = 'donation';
   const name = submitterName(form, values);
@@ -179,14 +200,15 @@ export function donationEmails({ submission, amount, reference }) {
     ? 'You also asked to receive email news from Adam Foundation. You can unsubscribe at any time.'
     : 'You did not sign up for marketing emails, so we will not send you any.';
   const socialsHtml = SOCIALS.map(([n, u]) => `<a href="${u}" style="color:#264f70">${n}</a>`).join(' · ');
-  const summary = [['Donation', amount], ['Payment reference', reference], ['Paid', new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'long', timeStyle: 'short' })]];
+  const giftAid = giftAidDetails(values, amountPence);
+  const summary = [['Donation', amount], ...giftAid.rows, ['Payment reference', reference], ['Paid', new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'long', timeStyle: 'short' })]];
 
   const receiptHtml = layout({
     heading: 'Thank you for your donation',
     intro: para(`Dear ${escapeHtml(name)},`)
       + para(`Thank you for donating <strong>${escapeHtml(amount)}</strong> to help fund reusable Kawthar bottles for UK mosques this Ramadan. Your gift helps us move from our first 10,000 bottles towards our shared goal of 100,000.`),
     inner: `${tableHtml(summary)}
-<p style="margin:8px 0 8px;font-size:13px;font-weight:bold;color:#122d45">Your details</p>${tableHtml(list)}
+${giftAid.paras.map((p) => para(escapeHtml(p))).join('')}<p style="margin:8px 0 8px;font-size:13px;font-weight:bold;color:#122d45">Your details</p>${tableHtml(list)}
 ${para('Please keep this email as a record of your donation. If anything needs correcting, just reply to it.')}
 <p style="margin:0 0 6px;font-size:15px;line-height:1.6">Stay connected with us:</p>
 <p style="margin:0 0 24px;font-size:14px;line-height:1.8">${socialsHtml}</p>`,
@@ -195,13 +217,13 @@ ${para('Please keep this email as a record of your donation. If anything needs c
   const receiptText = [
     `Dear ${name},`, '',
     `Thank you for donating ${amount} to help fund reusable Kawthar bottles for UK mosques this Ramadan.`, '',
-    tableText(summary), '', 'Your details', tableText(list), '',
+    tableText(summary), '', ...giftAid.paras.flatMap((p) => [p, '']), 'Your details', tableText(list), '',
     'Please keep this email as a record of your donation.', '',
     'Stay connected:', ...SOCIALS.map(([n, u]) => `${n}: ${u}`), '',
     `You are receiving this email because ${values.email} made a donation at ${pageOf(form)}. ${choice}`, '', 'Adam Foundation',
   ].join('\n');
 
-  const meta = [['Donation', amount], ['Payment reference', reference], ['Source', submission.source], ['Reference', `kawthar_submissions #${submission.id}`]];
+  const meta = [['Donation', amount], ...giftAid.team, ['Payment reference', reference], ['Source', submission.source], ['Reference', `kawthar_submissions #${submission.id}`]];
   const notifyHtml = layout({
     heading: `New donation: ${escapeHtml(amount)}`,
     intro: para(`${escapeHtml(name)} (<a href="mailto:${escapeHtml(values.email)}" style="color:#264f70">${escapeHtml(values.email)}</a>) donated ${escapeHtml(amount)} through Stripe on ${escapeHtml(pageOf(form))}. Reply to this email to answer them directly.`),
@@ -214,7 +236,7 @@ ${para('Please keep this email as a record of your donation. If anything needs c
     receipt: { to: values.email, subject: `Thank you for your ${amount} Kawthar donation`, html: receiptHtml, text: receiptText, tags: ['kawthar-donation'] },
     notify: {
       to: notifyRecipients(), replyTo: values.email,
-      subject: `Kawthar donation: ${amount} from ${name}${org ? ` (${org})` : ''}`.slice(0, 180),
+      subject: `Kawthar donation: ${amount} from ${name}${org ? ` (${org})` : ''}${values.gift_aid ? ' + Gift Aid' : ''}`.slice(0, 180),
       html: notifyHtml, text: notifyText, tags: ['kawthar-notify'],
     },
   };
