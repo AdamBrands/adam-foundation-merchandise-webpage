@@ -913,8 +913,18 @@
 @keyframes kw-waste-wave{0%,66%,100%{transform:translateY(0)}74%,91%{transform:translateY(-2px)}82%{transform:translateY(1px)}}
 
 /* Real Kawthar bottle photos (replacing the drawn SVG). Keep the photo's own
-   proportions and lift the navy bottle off the navy panel with a soft glow. */
+   proportions and give it a soft shadow. */
 img.bottle{width:auto;object-fit:contain}
 .product-scene img.bottle,.partner-visual img.bottle,.recipient-small-scene img.bottle{width:auto}
-.product-scene img.bottle,.partner-visual img.bottle{filter:drop-shadow(0 0 34px #8fb8e04d) drop-shadow(12px 18px 14px #0008)}
+.product-scene img.bottle,.partner-visual img.bottle{filter:drop-shadow(10px 16px 14px #1b2a3a40) drop-shadow(2px 4px 4px #1b2a3a33)}
+/* Light cream product panels so the navy bottle stands out. */
+.donor .royal-hero .product-scene,.mosque .product-scene{background:#f8f1e6;border:1px solid #e3d3b8;color:#1d2a3a}
+.donor .product-scene:before,.mosque .product-scene:before{border-color:#d9c3a0}
+.donor .product-scene .orbit,.mosque .product-scene .orbit{border-color:#d4b98e80}
+.donor .product-scene .scene-mark,.donor .product-scene .scene-caption{color:#4a2034}
+.mosque .product-scene .scene-mark,.mosque .product-scene .scene-caption{color:#1d3361}
+.partners .partner-visual{background:#fbf6ef;border-color:#ead9c6}
+.partners .partner-visual:before{background:#f3d9c0;opacity:.75}
+.partners .partner-visual:after{border-color:#b9764e}
+.partners .partner-visual .scene-mark,.partners .partner-visual .scene-caption{color:#a35d38}
 .recipient-small-scene img.bottle{filter:drop-shadow(0 0 10px #8fb8e040) drop-shadow(4px 5px 4px #122d4533)}
