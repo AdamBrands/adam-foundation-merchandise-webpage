@@ -1,4 +1,4 @@
-import { FORMS, displayValue, gbp, giftAidPence, submitterName } from '../../kawthar/assets/forms.js';
+import { DONATION_TYPE, FORMS, displayValue, gbp, giftAidPence, submitterName } from '../../kawthar/assets/forms.js';
 import { escapeHtml } from './request.js';
 import { WHATSAPP } from './email.js';
 
@@ -39,6 +39,9 @@ function tableHtml(list) {
     list.map(([k, v]) => `<tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #dfdfd8;font-size:12px;color:#62717b;vertical-align:top;width:40%">${escapeHtml(k)}</td><td style="padding:8px 0;border-bottom:1px solid #dfdfd8;font-size:14px;color:#183247;white-space:pre-wrap;word-break:break-word">${escapeHtml(v)}</td></tr>`).join('')
   }</table>`;
 }
+
+// "Donation type: Sadaqah" for donations recorded with a type.
+const typeRows = (values) => (values?.donation_type === DONATION_TYPE.key ? [['Donation type', DONATION_TYPE.label]] : []);
 
 const tableText = (list) => list.map(([k, v]) => `${k}: ${v}`).join('\n');
 
@@ -89,7 +92,7 @@ const COPY = {
 // Copy of the Masjid, partnership or pledge form for the person who sent it.
 export function confirmationEmail({ form, values, optIn }) {
   const copy = COPY[form];
-  const list = rows(form, values);
+  const list = [...rows(form, values), ...typeRows(values)];
   const choice = optIn
     ? 'You also asked to receive email news from Adam Foundation. You can unsubscribe at any time.'
     : 'You did not sign up for marketing emails, so we will not send you any.';
@@ -134,7 +137,7 @@ const TEAM_HEADING = {
 
 // Notification to the team. Reply-To is the visitor, so staff can answer directly.
 export function notificationEmail({ form, values, id, source, personEmailed }) {
-  const list = rows(form, values);
+  const list = [...rows(form, values), ...typeRows(values)];
   const when = new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'full', timeStyle: 'short' });
   const meta = [
     ['Submitted', `${when} (UK time)`],
@@ -201,7 +204,7 @@ export function donationEmails({ submission, amount, amountPence = 0, reference 
     : 'You did not sign up for marketing emails, so we will not send you any.';
   const socialsHtml = SOCIALS.map(([n, u]) => `<a href="${u}" style="color:#264f70">${n}</a>`).join(' · ');
   const giftAid = giftAidDetails(values, amountPence);
-  const summary = [['Donation', amount], ...giftAid.rows, ['Payment reference', reference], ['Paid', new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'long', timeStyle: 'short' })]];
+  const summary = [['Donation', amount], ...typeRows(values), ...giftAid.rows, ['Payment reference', reference], ['Paid', new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', dateStyle: 'long', timeStyle: 'short' })]];
 
   const receiptHtml = layout({
     heading: 'Thank you for your donation',
@@ -223,7 +226,7 @@ ${para('Please keep this email as a record of your donation. If anything needs c
     `You are receiving this email because ${values.email} made a donation at ${pageOf(form)}. ${choice}`, '', 'Adam Foundation',
   ].join('\n');
 
-  const meta = [['Donation', amount], ...giftAid.team, ['Payment reference', reference], ['Source', submission.source], ['Reference', `kawthar_submissions #${submission.id}`]];
+  const meta = [['Donation', amount], ...typeRows(values), ...giftAid.team, ['Payment reference', reference], ['Source', submission.source], ['Reference', `kawthar_submissions #${submission.id}`]];
   const notifyHtml = layout({
     heading: `New donation: ${escapeHtml(amount)}`,
     intro: para(`${escapeHtml(name)} (<a href="mailto:${escapeHtml(values.email)}" style="color:#264f70">${escapeHtml(values.email)}</a>) donated ${escapeHtml(amount)} through Stripe on ${escapeHtml(pageOf(form))}. Reply to this email to answer them directly.`),

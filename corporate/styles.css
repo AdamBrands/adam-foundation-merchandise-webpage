@@ -843,6 +843,7 @@
 .landing .campaign-identity .campaign-name{font:600 9px/1.5 Arial,Helvetica,sans-serif;letter-spacing:2px;color:#6e7477}
 .landing .campaign-identity .campaign-tagline{font:400 21px/1.35 Georgia,'Times New Roman',serif;letter-spacing:-.01em;color:#344a5b;margin:0;max-width:100%}
 .landing .campaign-identity .tagline-phrase{display:inline-block;white-space:nowrap}
+.landing .name-phrase,.landing .footer .campaign-footer-tagline .name-phrase{display:inline-block;white-space:nowrap;margin:0}
 .landing .campaign-identity .campaign-amanah{color:#806841}
 .landing .footer .campaign-footer-tagline{margin:20px 0 12px;max-width:none;color:#e1d9c9}
 .landing .footer .campaign-footer-tagline span{display:block;font:700 9px/1.5 Arial,Helvetica,sans-serif;letter-spacing:2.5px;color:#cbb68e;margin-bottom:4px}
