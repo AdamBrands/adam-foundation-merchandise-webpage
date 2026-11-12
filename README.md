@@ -129,7 +129,7 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 
 ## Kawthar pages
 
-The Kawthar campaign ("Our Earth. Our Amanah.") is the reusable bottle initiative within Shared Values, an Adam Foundation campaign inspired by Avicenna Scholars, planned to launch from COP31 with bottle distribution from January 2027 for Ramadan. It has four pages, built from the comms team's package `Kawthar_Infographic_Alternative_Package` (latest copy 9 November 2026, with the Shared Values wording). Each has its own colour palette:
+The Kawthar campaign ("Our Earth. Our Amanah.") is the reusable bottle initiative within Our Planet, Our Responsibility, an Adam Foundation campaign inspired by Avicenna Scholars, planned to launch from COP31 with bottle distribution from January 2027 for Ramadan. It has four pages, built from the comms team's package `Kawthar_Infographic_Alternative_Package` (latest copy 9 November 2026, with the Our Planet, Our Responsibility wording). Each has its own colour palette:
 
 | Page | Audience | Form (key) | Person receives |
 |---|---|---|---|
