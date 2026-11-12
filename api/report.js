@@ -1,10 +1,11 @@
 import { timingSafeEqual } from 'node:crypto';
-import { getKawtharSummary, getRequestsCsv, getSummary, kawtharTable, summaryTable } from './_lib/report.js';
+import { getKawtharCsv, getKawtharSummary, getRequestsCsv, getSummary, kawtharTable, summaryTable } from './_lib/report.js';
 import { escapeHtml, londonDate } from './_lib/request.js';
 
 // Private report at /report (rewritten here by vercel.json), protected by HTTP
 // Basic Auth. ?range=7|30|all, or ?from=YYYY-MM-DD&to=YYYY-MM-DD. ?format=csv
-// downloads the book requests for the same period.
+// downloads the book requests for the same period, ?format=kawthar-csv the
+// Kawthar submissions.
 export async function GET(request) {
   const password = process.env.REPORT_PASSWORD;
   if (!password) return new Response('Report is not configured.', { status: 503 });
@@ -24,6 +25,17 @@ export async function GET(request) {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="adhkar-book-requests_${from || 'start'}_to_${to || londonDate()}.csv"`,
+        'Cache-Control': 'no-store',
+      },
+    });
+  }
+
+  if (params.get('format') === 'kawthar-csv') {
+    const csv = await getKawtharCsv(from, to);
+    return new Response(`\ufeff${csv}`, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="kawthar-submissions_${from || 'start'}_to_${to || londonDate()}.csv"`,
         'Cache-Control': 'no-store',
       },
     });
@@ -59,7 +71,8 @@ ${summary.totals.failed ? `<p class="warn">${summary.totals.failed} book email${
 <p class="note">QR scans count each time a printed code is opened; link previews and bots are not counted, matching the RMS portal. Book requests exclude repeat requests from the same address within 10 minutes. The opt-in rate is marketing opt-ins divided by the number of different people who asked for the book. Totals count each person once, so they can be lower than the sum of the rows.</p>
 <h2>Kawthar pages</h2>
 <div class="wrap">${kawtharTable(kawthar)}</div>
-<p class="note">Visits count each time one of the pages opens (counted from 12 November 2026); bots are not counted, and a reload counts again. The source is the <code>?src=</code> code the visitor arrived with, and it carries over when they click through from Corporate to Donate or Masjids. Submissions leave out tests, repeats from the same address within 10 minutes, and donations that weren’t paid. Submissions made before visits were counted show with 0 visits.</p>
+<a class="csv" href="?${query}&amp;format=kawthar-csv">Download Kawthar submissions (CSV)</a>
+<p class="note">Visits count each time one of the pages opens (counted from 12 November 2026); bots are not counted, and a reload counts again. The source is the <code>?src=</code> code the visitor arrived with, and it carries over when they click through from Corporate to Donate or Masjids. Submissions leave out tests, repeats from the same address within 10 minutes, and donations that weren’t paid. Submissions made before visits were counted show with 0 visits. The CSV lists every submission in the period, including repeats and unpaid donations, with each person’s answers; filter by email_status and payment_status.</p>
 </main></body></html>`, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   });

@@ -73,7 +73,7 @@ The report is at `/report`, signed in with `REPORT_USER` (default `adam`) and `R
 
 A second table, Kawthar pages, shows visits and submissions for `/donate`, `/masjids`, `/bottle` and `/corporate` by source and page, with the visit-to-submission rate. Submissions leave out tests, repeats within 10 minutes and unpaid donations. Visits are counted from 12 November 2026. Friendly names for `?src=` codes go in `api/_lib/sources.js` too.
 
-It covers the last 7 days, the last 30 days, all time or a custom range, and has a CSV download (book requests only). The weekly email goes to `REPORT_EMAIL_TO` with both tables (Adhkar book and Kawthar pages) for the last 7 days and all time, and attaches every book request as a CSV. The free Supabase plan has no backups, so that attachment is the off-site copy.
+It covers the last 7 days, the last 30 days, all time or a custom range, and has two CSV downloads for the period: book requests, and Kawthar submissions (every answer as its own `answer_*` column, with email, payment and source details; tests left out, repeats and unpaid donations included). The weekly email goes to `REPORT_EMAIL_TO` with both tables (Adhkar book and Kawthar pages) for the last 7 days and all time, and attaches every book request as a CSV. The free Supabase plan has no backups, so that attachment is the off-site copy.
 
 ## Services
 
@@ -166,7 +166,7 @@ The team gets a notification with every answer for each submission.
   where v.created_at > now() - interval '30 days' and v.source <> 'test'
   group by v.source, v.page order by visits desc;
   ```
-- `/report` shows Kawthar visits and submissions by source and page (see [QR codes and reporting](#qr-codes-and-reporting)). The weekly email has the same table for the last 7 days and all time. The CSV is still book requests only.
+- `/report` shows Kawthar visits and submissions by source and page (see [QR codes and reporting](#qr-codes-and-reporting)). The weekly email has the same table for the last 7 days and all time. The email's CSV attachment is book requests only; the Kawthar submissions CSV is on `/report`.
 
 ### Donations (Stripe)
 
