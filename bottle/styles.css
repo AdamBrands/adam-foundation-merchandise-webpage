@@ -522,3 +522,10 @@
 .landing .footer .campaign-footer-tagline span{display:block;font:700 9px/1.5 Arial,Helvetica,sans-serif;letter-spacing:2.5px;color:#cbb68e;margin-bottom:4px}
 .landing .footer .campaign-footer-tagline strong{display:block;font:400 17px/1.45 Georgia,'Times New Roman',serif;letter-spacing:-.015em;color:#e1d9c9}
 @media(max-width:550px){.landing .campaign-identity .wrap{gap:2px;padding-top:9px;padding-bottom:11px}.landing .campaign-identity .campaign-name{font-size:9px;letter-spacing:1.8px}.landing .campaign-identity .campaign-tagline{font-size:19px;line-height:1.35}}
+
+/* Real Kawthar bottle photos (replacing the drawn SVG). Keep the photo's own
+   proportions and lift the navy bottle off the navy panel with a soft glow. */
+img.bottle{width:auto;object-fit:contain}
+.product-scene img.bottle,.partner-visual img.bottle,.recipient-small-scene img.bottle{width:auto}
+.product-scene img.bottle,.partner-visual img.bottle{filter:drop-shadow(0 0 34px #8fb8e04d) drop-shadow(12px 18px 14px #0008)}
+.recipient-small-scene img.bottle{filter:drop-shadow(0 0 10px #8fb8e040) drop-shadow(4px 5px 4px #122d4533)}
