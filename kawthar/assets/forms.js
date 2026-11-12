@@ -15,6 +15,11 @@ export const AUDIENCE_UPDATES = {
 };
 export const AUDIENCE_CONSENT_VERSION = '2026-11-kawthar-audience-v1';
 
+// Every Donate page gift is Sadaqah. It's a fixed classification: the donor
+// doesn't choose it, and the server sets it (api/kawthar.js) rather than
+// trusting the browser. Stored as data.donation_type and sent to Stripe.
+export const DONATION_TYPE = { key: 'sadaqah', label: 'Sadaqah' };
+
 // Gift Aid on the Donate page. `declaration` is the wording of the page's Gift
 // Aid box, word for word, with the amount filled in. api/kawthar.js stores it,
 // with this version and the server's time, on every donation where the box is

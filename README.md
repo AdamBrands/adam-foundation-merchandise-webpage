@@ -182,6 +182,8 @@ When `STRIPE_SECRET_KEY` is set, the Donate page takes a one-off donation of £1
 
 Checkout sessions carry `metadata.form = donation`, and a gift made on behalf of someone also carries `on_behalf_of`. Test-mode donations are stored with `is_test = true`.
 
+Every donation is Sadaqah. This is a fixed classification (the donor isn't asked): `api/kawthar.js` sets `donation_type = sadaqah` in `kawthar_submissions.data` for every donation, paid or pledged, the Checkout session and payment carry `metadata.donation_type = sadaqah`, the receipt and team emails show "Donation type: Sadaqah", and the /report CSV has it as `answer_donation_type`. The value lives in `DONATION_TYPE` in `forms.js`.
+
 **Setting up Stripe**
 1. Create a webhook endpoint in the Stripe Dashboard (Developers → Webhooks) for `https://connect.adamfoundation.com/api/stripe-webhook`, listening to the four events above. Make one in test mode for the Preview deployment as well.
 2. Put the keys and signing secrets in Vercel. Test values go in Preview, live values in Production, and all are marked Sensitive. Never commit them.

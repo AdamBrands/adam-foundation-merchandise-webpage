@@ -50,6 +50,7 @@ export async function createDonationSession({ id, form = 'donation', values, sou
   const giftAid = values.gift_aid
     ? { gift_aid: 'yes', gift_aid_declaration: values.gift_aid_declaration?.version ?? '', gift_aid_value: formatGBP(giftAidPence(pence)) }
     : { gift_aid: 'no' };
+  const donationType = values.donation_type ? { donation_type: values.donation_type } : {};
   return stripeClient().checkout.sessions.create({
     mode: 'payment',
     submit_type: 'donate',
@@ -66,10 +67,10 @@ export async function createDonationSession({ id, form = 'donation', values, sou
     }],
     customer_email: values.email,
     client_reference_id: String(id),
-    metadata: { submission_id: String(id), form, source, ...onBehalfOf, ...giftAid },
+    metadata: { submission_id: String(id), form, source, ...donationType, ...onBehalfOf, ...giftAid },
     payment_intent_data: {
       description: `Kawthar bottle donation #${id}${values.gift_aid ? ' (Gift Aid)' : ''}`,
-      metadata: { submission_id: String(id), source, ...onBehalfOf, ...giftAid },
+      metadata: { submission_id: String(id), source, ...donationType, ...onBehalfOf, ...giftAid },
     },
     ...(values.gift_aid ? {
       custom_text: {
