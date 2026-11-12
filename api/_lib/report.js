@@ -1,6 +1,7 @@
 import { sql } from './db.js';
 import { sourceLabel } from './sources.js';
 import { escapeHtml } from './request.js';
+import { FORMS } from '../../kawthar/assets/forms.js';
 
 // Dates are YYYY-MM-DD in UK time; `to` is inclusive. null means open-ended.
 // Test scans and test requests are always left out.
@@ -53,12 +54,47 @@ export async function getRequestsCsv(from, to) {
     where not is_test and created_at >= ${fromTs(from)} and created_at < ${toTs(to)}
     order by created_at`;
   const header = ['date_time_uk', 'email', 'marketing_opt_in', 'source', 'device', 'email_status', 'consent_version'];
-  const cell = (v) => {
-    const s = String(v ?? '');
-    // Quote everything; prefix formula-like values so spreadsheets don't execute them.
-    return `"${(/^[=+\-@]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
-  };
-  return [header.join(','), ...rows.map((r) => header.map((h) => cell(r[h])).join(','))].join('\r\n');
+  return toCsv(header, rows);
+}
+
+// Quote everything; prefix formula-like values so spreadsheets don't execute them.
+function cell(v) {
+  const s = v !== null && typeof v === 'object' ? JSON.stringify(v) : String(v ?? '');
+  return `"${(/^[=+\-@]/.test(s) ? `'${s}` : s).replace(/"/g, '""')}"`;
+}
+
+const toCsv = (header, rows) => [header.join(','), ...rows.map((r) => header.map((h) => cell(r[h])).join(','))].join('\r\n');
+
+// Every Kawthar submission in the period (tests left out), one row each. The
+// fixed columns come first, then each answer in the order the forms ask for
+// it; answers a form doesn't have are blank. Repeats and unpaid donations are
+// included, so filter by email_status and payment_status.
+const SUBMISSION_COLUMNS = ['date_time_uk', 'id', 'page', 'form', 'name', 'email', 'marketing_opt_in', 'source', 'device',
+  'email_status', 'payment_status', 'amount_gbp', 'paid_at_uk', 'stripe_payment_intent', 'consent_version'];
+const SHOWN = new Set(['email', 'updates', 'amount']);
+const PAGE_NAMES = { donation: 'donate', masjid: 'masjids', bottle: 'bottle', partner: 'corporate' };
+
+export async function getKawtharCsv(from, to) {
+  const rows = await sql`
+    select id, form, name, email, marketing_opt_in, source, device, email_status, payment_status,
+           amount_pence, stripe_payment_intent, consent_version, data,
+           to_char(created_at at time zone 'Europe/London', 'YYYY-MM-DD HH24:MI:SS') as date_time_uk,
+           to_char(paid_at at time zone 'Europe/London', 'YYYY-MM-DD HH24:MI:SS') as paid_at_uk
+    from kawthar_submissions
+    where not is_test and created_at >= ${fromTs(from)} and created_at < ${toTs(to)}
+    order by created_at`;
+
+  const known = Object.values(FORMS).flatMap((f) => f.fields.map((field) => field.name));
+  const present = new Set(rows.flatMap((r) => Object.keys(r.data || {})));
+  const answers = [...new Set([...known.filter((k) => present.has(k)), ...[...present].sort()])].filter((k) => !SHOWN.has(k));
+
+  const out = rows.map((r) => {
+    const amount = r.amount_pence ? r.amount_pence / 100 : r.data?.amount;
+    const row = { ...r, page: PAGE_NAMES[r.form] || 'kawthar (old page)', amount_gbp: amount == null ? '' : Number(amount).toFixed(2) };
+    for (const k of answers) row[`answer_${k}`] = r.data?.[k];
+    return row;
+  });
+  return toCsv([...SUBMISSION_COLUMNS, ...answers.map((k) => `answer_${k}`)], out);
 }
 
 // Kawthar pages: visits and completed submissions by source and page. A
