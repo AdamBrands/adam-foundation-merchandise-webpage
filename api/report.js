@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { getRequestsCsv, getSummary, summaryTable } from './_lib/report.js';
+import { getKawtharSummary, getRequestsCsv, getSummary, kawtharTable, summaryTable } from './_lib/report.js';
 import { escapeHtml, londonDate } from './_lib/request.js';
 
 // Private report at /report (rewritten here by vercel.json), protected by HTTP
@@ -29,7 +29,7 @@ export async function GET(request) {
     });
   }
 
-  const summary = await getSummary(from, to);
+  const [summary, kawthar] = await Promise.all([getSummary(from, to), getKawtharSummary(from, to)]);
   const query = range === 'custom' ? `from=${from}&to=${to}` : `range=${range}`;
   const tab = (value, label) => (range === value
     ? `<strong>${label}</strong>`
@@ -41,7 +41,7 @@ export async function GET(request) {
 <style>
 body{margin:0;font-family:Arial,sans-serif;color:#061238;background:#fff}
 main{max-width:860px;margin:0 auto;padding:32px 16px}
-h1{font-size:26px;margin:0 0 6px}.sub{color:#4b566d;font-size:14px;margin:0 0 20px}
+h1{font-size:26px;margin:0 0 6px}h2{font-size:19px;margin:34px 0 0}.sub{color:#4b566d;font-size:14px;margin:0 0 20px}
 nav,form{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:14px;margin:0 0 14px}
 a{color:#0055b8}input{font:inherit;padding:4px 6px}button{font:inherit;padding:5px 12px;background:#0055b8;color:#fff;border:0;border-radius:3px}
 .wrap{overflow-x:auto;margin:18px 0}.note{font-size:13px;line-height:1.6;color:#4b566d}.warn{background:#fff5e6;border-left:4px solid #ad8c60;padding:10px 12px;font-size:14px}
@@ -53,9 +53,13 @@ a{color:#0055b8}input{font:inherit;padding:4px 6px}button{font:inherit;padding:5
 <form method="get"><label>From <input type="date" name="from" value="${escapeHtml(from || '')}" required></label>
 <label>To <input type="date" name="to" value="${escapeHtml(to || '')}" required></label><button>Show</button></form>
 ${summary.totals.failed ? `<p class="warn">${summary.totals.failed} book email${summary.totals.failed === 1 ? '' : 's'} failed to send in this period. Filter the CSV by email_status = failed and send these by hand.</p>` : ''}
+<h2>Adhkar book (QR codes)</h2>
 <div class="wrap">${summaryTable(summary)}</div>
 <a class="csv" href="?${query}&amp;format=csv">Download book requests (CSV)</a>
-<p class="note">QR scans count each time a printed code is opened; link previews and bots are not counted, matching the RMS portal.Book requests exclude repeat requests from the same address within 10 minutes. The opt-in rate is marketing opt-ins divided by the number of different people who asked for the book. Totals count each person once, so they can be lower than the sum of the rows.</p>
+<p class="note">QR scans count each time a printed code is opened; link previews and bots are not counted, matching the RMS portal. Book requests exclude repeat requests from the same address within 10 minutes. The opt-in rate is marketing opt-ins divided by the number of different people who asked for the book. Totals count each person once, so they can be lower than the sum of the rows.</p>
+<h2>Kawthar pages</h2>
+<div class="wrap">${kawtharTable(kawthar)}</div>
+<p class="note">Visits count each time one of the pages opens (counted from 12 November 2026); bots are not counted, and a reload counts again. The source is the <code>?src=</code> code the visitor arrived with, and it carries over when they click through from Corporate to Donate or Masjids. Submissions leave out tests, repeats from the same address within 10 minutes, and donations that weren’t paid. Submissions made before visits were counted show with 0 visits.</p>
 </main></body></html>`, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   });
