@@ -911,3 +911,10 @@
 @keyframes kw-bin-open{0%,64%,87%,100%{transform:rotate(0deg)}69%,80%{transform:rotate(-12deg)}}
 @keyframes kw-waste-bob{0%,66%,100%{transform:translateY(0) rotate(0deg)}74%,91%{transform:translateY(-4px) rotate(-5deg)}82%{transform:translateY(1px) rotate(2deg)}}
 @keyframes kw-waste-wave{0%,66%,100%{transform:translateY(0)}74%,91%{transform:translateY(-2px)}82%{transform:translateY(1px)}}
+
+/* Real Kawthar bottle photos (replacing the drawn SVG). Keep the photo's own
+   proportions and lift the navy bottle off the navy panel with a soft glow. */
+img.bottle{width:auto;object-fit:contain}
+.product-scene img.bottle,.partner-visual img.bottle,.recipient-small-scene img.bottle{width:auto}
+.product-scene img.bottle,.partner-visual img.bottle{filter:drop-shadow(0 0 34px #8fb8e04d) drop-shadow(12px 18px 14px #0008)}
+.recipient-small-scene img.bottle{filter:drop-shadow(0 0 10px #8fb8e040) drop-shadow(4px 5px 4px #122d4533)}
