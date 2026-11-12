@@ -14,6 +14,36 @@ const slug = location.pathname.replace(/\/+$/, '').split('/').pop();
 const source = sourceFrom(location.search, /^[a-z]+$/.test(slug) ? `kawthar-${slug}` : 'kawthar');
 const currency = (value) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Number(value));
 
+/* ---------- Visits and the ?src= tag ---------- */
+
+const PAGES = ['donate', 'masjids', 'bottle', 'corporate'];
+const pageOf = (pathname) => pathname.replace(/\/+$/, '').split('/').pop();
+
+// Counts this page load against its source (api/visit.js), so visits can be
+// compared with submissions from the same link. Coming back from Stripe
+// Checkout (?donation=…) isn't a new visit.
+if (PAGES.includes(slug) && !new URLSearchParams(location.search).has('donation')) {
+  fetch('/api/visit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ page: slug, source }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
+// Someone who arrived with ?src= keeps it on the links to the other Kawthar
+// pages, so a donation or application that started from a campaign link is
+// credited to that link.
+const campaign = sourceFrom(location.search, null);
+if (campaign) {
+  document.querySelectorAll('a[href^="/"]').forEach((link) => {
+    const url = new URL(link.href);
+    if (url.origin !== location.origin || !PAGES.includes(pageOf(url.pathname))) return;
+    url.searchParams.set('src', campaign);
+    link.href = `${url.pathname}${url.search}${url.hash}`;
+  });
+}
+
 function node(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;

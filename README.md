@@ -19,6 +19,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `assets/js/clean-url.js`: loaded by every page. Removes tracking parameters from the address bar when the page opens: Google's `_gl` (added by the Site Kit tag on adamfoundation.com to every link here) and ad click IDs such as `gclid` and `fbclid`. `?src=` and `utm_*` stay. Nothing on this site reads the removed parameters. If analytics is added to these pages, revisit the list first.
 - `assets/images/`: logos, Westminster banner, Westminster skyline border and WhatsApp QR image.
 - `api/scan.js`: logs a scan (code, device type, time; no IP addresses or cookies), then redirects to `/?src=<code>`. Link previews and bots are redirected but not logged, using the same rules as the RMS portal's dynamic QR counter.
+- `api/visit.js`: counts a visit to a Kawthar page (page, source, device type, time; no IP addresses or cookies). Bots aren't counted.
 - `api/book-request.js`: validates the email, stores the request and marketing choice, and sends the book.
 - `api/report.js`: password-protected report and CSV download.
 - `api/cron/weekly-report.js`: Monday email with the weekly summary and a CSV of all requests.
@@ -77,7 +78,7 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 **Supabase**
 
 - Project: `adam-foundation-connect` (`xomihzevrziigvjxqmjk`), organisation MB Org, Free plan, London (eu-west-2).
-- Tables: `scans` and `book_requests`. Row-level security is on, and the public API keys have no access.
+- Tables: `scans`, `book_requests`, `kawthar_submissions` and `page_visits`. Row-level security is on, and the public API keys have no access.
 - The site connects as `connect_writer` through the London pooler (transaction mode, port 6543). That role can read and add rows and update request status. It cannot delete rows.
 
 **Mandrill**
@@ -151,7 +152,19 @@ The team gets a notification with every answer for each submission.
 - A hidden honeypot field (`nickname`) catches simple bots.
 - Source: `?src=<code>` (or `?source=<code>`) is stored as the source. Without it the source is `kawthar-donate`, `kawthar-masjids`, `kawthar-bottle` or `kawthar-corporate`. `?src=test` marks a submission as a test. Set the bottle QR code's destination in the RMS portal to `https://connect.adamfoundation.com/bottle?src=<code>`. (`/q/<code>` always forwards to the connect page, so it isn't used here.) The "Discover values. Get your free Adhkar book" button on the adamfoundation.com homepage (Elementor, page 10274) links to `/corporate?src=website-homepage`.
 - Social links in the organisation cards (Bottle QR and Corporate) show as a row of full-colour brand logos (44px touch targets) in place of the designs' single-colour icons, and unknown channels are left out rather than shown as greyed-out placeholders. Each logo's label and tooltip still name the network and handle. The WhatsApp links use the verified Adam Foundation channel. The designs' "Handle / link to add" placeholders are filled where the handle is known (Adam Foundation TikTok and X) and left out otherwise.
-- Kawthar submissions are not in `/report` or the weekly CSV yet.
+- Visits: each time one of the four pages opens, `audience.js` sends the page and source to `api/visit.js`, which stores them in `page_visits` with the device type and time. No IP addresses or cookies, so a reload counts as another visit. Bots aren't counted, and coming back from Stripe Checkout isn't a new visit. The source is the same value a submission from that visit gets, so visits and submissions compare directly. `?src=test` visits are stored with source `test`.
+- The `?src=` tag follows the visitor: on a page opened with `?src=<code>`, the links to the other Kawthar pages (Corporate's Donate and Apply buttons) carry the same `?src=<code>`, so a donation that started from the homepage button is stored as `website-homepage`.
+- Visits by source and page, last 30 days (Supabase SQL editor):
+  ```sql
+  select v.source, v.page, count(*) as visits,
+         (select count(*) from kawthar_submissions s
+           where s.source = v.source and s.form = case v.page when 'donate' then 'donation' when 'masjids' then 'masjid' when 'bottle' then 'bottle' else 'partner' end
+             and s.created_at > now() - interval '30 days' and not s.is_test) as submissions
+  from page_visits v
+  where v.created_at > now() - interval '30 days' and v.source <> 'test'
+  group by v.source, v.page order by visits desc;
+  ```
+- Kawthar submissions and visits are not in `/report` or the weekly CSV yet.
 
 ### Donations (Stripe)
 

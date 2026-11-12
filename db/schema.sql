@@ -98,3 +98,23 @@ alter table public.kawthar_submissions
   drop constraint kawthar_submissions_form_check,
   add constraint kawthar_submissions_form_check
     check (form in ('mosque', 'support', 'book', 'masjid', 'partner', 'donation', 'bottle'));
+
+-- Visits to the Kawthar pages, added 12 November 2026. One row per page load,
+-- sent by kawthar/assets/audience.js to api/visit.js. source is the ?src= code
+-- or kawthar-<page>, the same value a submission from that visit gets, so the
+-- two can be compared by source. No IP addresses or cookies.
+create table public.page_visits (
+  id          bigint generated always as identity primary key,
+  page        text        not null check (page in ('donate', 'masjids', 'bottle', 'corporate')),
+  source      text        not null check (source ~ '^[a-z0-9-]{1,40}$'),
+  device      text        not null check (device in ('ios', 'android', 'other')),
+  created_at  timestamptz not null default now()
+);
+create index page_visits_source_created_at_idx on public.page_visits (source, created_at);
+create index page_visits_created_at_idx on public.page_visits (created_at);
+
+alter table public.page_visits enable row level security;
+revoke all on public.page_visits from anon, authenticated;
+grant select, insert on public.page_visits to connect_writer;
+create policy connect_writer_page_visits on public.page_visits
+  for all to connect_writer using (true) with check (true);
