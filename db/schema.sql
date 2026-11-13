@@ -118,3 +118,17 @@ revoke all on public.page_visits from anon, authenticated;
 grant select, insert on public.page_visits to connect_writer;
 create policy connect_writer_page_visits on public.page_visits
   for all to connect_writer using (true) with check (true);
+
+-- Refunds and disputes on Kawthar donations, added 13 November 2026, so a
+-- refunded or disputed donation is left out of a Gift Aid claim.
+-- api/stripe-webhook.js fills these from charge.refunded and charge.dispute.*,
+-- matched by stripe_payment_intent. payment_status is unchanged: it stays the
+-- Checkout outcome. Run this before deploying the webhook change; until then
+-- those events fail with a 500 and Stripe retries them.
+alter table public.kawthar_submissions
+  add column refunded_pence integer not null default 0 check (refunded_pence >= 0),
+  add column refunded_at timestamptz,
+  add column dispute_status text,
+  add column disputed_at timestamptz;
+create index kawthar_submissions_stripe_payment_intent_idx on public.kawthar_submissions (stripe_payment_intent)
+  where stripe_payment_intent is not null;
