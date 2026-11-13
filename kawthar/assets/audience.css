@@ -64,3 +64,23 @@ fieldset[data-field] .field-msg.show{margin-top:8px}
 .social-icon:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
 .social-icon:focus-visible{outline:2px solid var(--accent,#264f70);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.social-icon{transition:none}.social-icon:hover{transform:none}}
+
+/* Organisation cards (Bottle QR and Corporate): each card leads with the
+   organisation's logo instead of its name in text. The logo sits inside the
+   card's h3 with the name as alt text, so the heading still reads the same.
+   The row has a fixed height so the taglines line up across a pair of cards;
+   each logo gets its own height because their shapes differ (Avicenna is
+   portrait, the others landscape). */
+.organisation-card h3.organisation-logo{display:flex;align-items:center;height:92px;margin-bottom:18px;line-height:0}
+.organisation-logo img{display:block;width:auto;max-width:100%;height:100%;object-fit:contain;object-position:left center}
+.organisation-card[data-organisation=foundation] .organisation-logo img{height:64px}
+.organisation-card[data-organisation=ceh] .organisation-logo img{height:84px}
+.organisation-card[data-organisation=avicenna] .organisation-logo img{height:92px}
+.organisation-card[data-organisation=hub] .organisation-logo img{height:60px}
+@media(max-width:760px){
+ .organisation-card h3.organisation-logo{height:80px;margin-bottom:14px}
+ .organisation-card[data-organisation=foundation] .organisation-logo img{height:56px}
+ .organisation-card[data-organisation=ceh] .organisation-logo img{height:74px}
+ .organisation-card[data-organisation=avicenna] .organisation-logo img{height:80px}
+ .organisation-card[data-organisation=hub] .organisation-logo img{height:52px}
+}
