@@ -28,7 +28,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `donate/`, `masjids/`, `bottle/`, `corporate/`: the Kawthar pages, each an `index.html` and its own `styles.css`.
 - `kawthar/assets/`: shared by the Kawthar pages. `forms.js` holds the form fields and validation rules, used by the pages and by `api/kawthar.js`. `audience.js` runs the forms, `audience.css` styles their feedback, `form-ui.js` holds browser helpers and `motion.js` runs the illustration animations.
 - `api/kawthar.js`: validates and stores Kawthar form submissions, emails the person and the team, and starts Stripe Checkout for donations. Emails are built in `api/_lib/kawthar-email.js`.
-- `api/stripe-webhook.js`: confirms Kawthar donations from Stripe, then sends the receipt and team notification. Stripe setup is in `api/_lib/stripe.js`.
+- `api/stripe-webhook.js`: confirms Kawthar donations from Stripe, then sends the receipt and team notification. It also records refunds and disputes so they are left out of Gift Aid claims. Stripe setup is in `api/_lib/stripe.js`.
 - `db/schema.sql`: database tables, row-level security and the `connect_writer` role.
 - `adhkar/adhkar-book.pdf`: the book ("Daily Adhkar", 82 pages), published at `/adhkar/adhkar-book.pdf`. It's a lighter copy of the designer's print file "ADHKAR BOOK (Perfect bound) version 2.pdf". Only the background images are recompressed, and the text and artwork are unchanged (23 MB instead of 27 MB).
 - `vercel.json`: `/q/:code` and `/report` rewrites, the London function region, the PDF bundling and the two crons.
@@ -178,6 +178,10 @@ When `STRIPE_SECRET_KEY` is set, the Donate page takes a one-off donation of £1
    - `checkout.session.completed` and `checkout.session.async_payment_succeeded`: the row becomes `paid`, and the donor receipt and team notification go out once only.
    - `checkout.session.async_payment_failed`: the row becomes `failed`.
    - `checkout.session.expired`: the row becomes `expired`.
+   - `charge.refunded`: `refunded_pence` becomes the charge's refunded total (full or partial) and `refunded_at` is set. `payment_status` stays `paid`.
+   - `charge.dispute.created`, `charge.dispute.updated` and `charge.dispute.closed`: `dispute_status` takes Stripe's dispute status (`needs_response`, `under_review`, `won`, `lost`, or `warning_*` for an inquiry) and `disputed_at` is set. Once `won`, `lost` or `prevented`, a late event for an earlier stage doesn't change it.
+
+   Refunds and disputes are matched by the donation's PaymentIntent and are there so Gift Aid isn't claimed on money the Foundation gave back. The refunded total only goes up, so if a refund later fails, set `refunded_pence` back by hand. Until then the donation stays out of claims. The /report CSV shows both as `refunded_gbp` and `dispute_status`.
 4. Back on `/donate?donation=success`, the page shows the amount and status. The donation is recorded by the webhook, never by this page. `?donation=cancelled` says nothing was charged and offers to try again.
 
 Checkout sessions carry `metadata.form = donation`, and a gift made on behalf of someone also carries `on_behalf_of`. Test-mode donations are stored with `is_test = true`.
@@ -185,7 +189,7 @@ Checkout sessions carry `metadata.form = donation`, and a gift made on behalf of
 Every donation is Sadaqah. This is a fixed classification (the donor isn't asked): `api/kawthar.js` sets `donation_type = sadaqah` in `kawthar_submissions.data` for every donation, paid or pledged, the Checkout session and payment carry `metadata.donation_type = sadaqah`, the receipt and team emails show "Donation type: Sadaqah", and the /report CSV has it as `answer_donation_type`. The value lives in `DONATION_TYPE` in `forms.js`.
 
 **Setting up Stripe**
-1. Create a webhook endpoint in the Stripe Dashboard (Developers → Webhooks) for `https://connect.adamfoundation.com/api/stripe-webhook`, listening to the four events above. Make one in test mode for the Preview deployment as well.
+1. Create a webhook endpoint in the Stripe Dashboard (Developers → Webhooks) for `https://connect.adamfoundation.com/api/stripe-webhook`, listening to the seven events above. An endpoint made before 13 November 2026 only has the four `checkout.session.*` events: add the three `charge.dispute.*` events and `charge.refunded` to it, and run the refunds and disputes block at the end of `db/schema.sql` first. Make one in test mode for the Preview deployment as well.
 2. Put the keys and signing secrets in Vercel. Test values go in Preview, live values in Production, and all are marked Sensitive. Never commit them.
 3. Before going live, check that the payment methods are on in the Stripe Dashboard, and that the Foundation's public details are right: name, statement descriptor, support email and charity status.
 
@@ -200,15 +204,19 @@ Stripe has no Gift Aid feature. It takes the payment, and the Foundation claims 
 5. The receipt quotes the declaration and asks the donor to say if their details change. The team notification shows the claimable amount and the declaration's version and time.
 6. A changed amount clears the tick, because a declaration covers one donation.
 
-To list paid donations for a claim (name, address, amount, payment date):
+To list paid donations for a claim (name, address, amount, payment date). The amount is what the Foundation kept after any partial refund. Fully refunded donations, and donations with a dispute that isn't settled in the Foundation's favour, are left out:
 
 ```sql
 select id, name, data->>'gift_aid_address_line_1' as address, data->>'gift_aid_postcode' as postcode,
-       amount_pence / 100.0 as amount, paid_at, data->'gift_aid_declaration' as declaration
+       (amount_pence - refunded_pence) / 100.0 as amount, paid_at, data->'gift_aid_declaration' as declaration
 from kawthar_submissions
 where form = 'donation' and payment_status = 'paid' and not is_test and (data->>'gift_aid')::boolean
+  and amount_pence > refunded_pence
+  and (dispute_status is null or dispute_status in ('won', 'warning_closed', 'prevented'))
 order by paid_at;
 ```
+
+If a donation is refunded or lost in a dispute after it has been claimed, the Foundation has to adjust its next claim with HMRC. Compare `refunded_at` and `disputed_at` with the date of the last claim.
 
 Before claiming, confirm the charity's HMRC Gift Aid registration and that the privacy policy covers Gift Aid. HMRC guidance: https://www.gov.uk/guidance/gift-aid-declarations-claiming-tax-back-on-donations
 

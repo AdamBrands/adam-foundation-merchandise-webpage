@@ -9,12 +9,20 @@ import { formatGBP, paymentsEnabled, stripeClient } from './_lib/stripe.js';
 //   checkout.session.async_payment_succeeded
 //   checkout.session.async_payment_failed
 //   checkout.session.expired
+//   charge.refunded
+//   charge.dispute.created
+//   charge.dispute.updated
+//   charge.dispute.closed
 // and put its signing secret in STRIPE_WEBHOOK_SECRET.
 //
 // A donation is only marked paid, and its receipt and team notification only
 // sent, here: never from the thank-you page, which a donor may never reach.
 // The update below only matches a row that isn't already paid, so Stripe
 // retrying an event never sends the emails twice.
+//
+// Refunds and disputes are recorded beside payment_status (which stays the
+// Checkout outcome) so a refunded or disputed donation is left out of a Gift
+// Aid claim. Both are matched by the donation's PaymentIntent.
 export async function POST(request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!paymentsEnabled() || !secret) return new Response('Payments are not configured', { status: 503 });
@@ -28,41 +36,86 @@ export async function POST(request) {
     return new Response('Invalid signature', { status: 400 });
   }
 
-  const session = event.data.object;
-  // Only Checkout sessions from the Donate page (/donate).
-  if (session?.object !== 'checkout.session' || session.metadata?.form !== 'donation') {
-    return Response.json({ received: true, ignored: true });
-  }
-
+  const object = event.data.object;
+  let handled = false;
   try {
-    switch (event.type) {
-      case 'checkout.session.completed':
-      case 'checkout.session.async_payment_succeeded':
-        if (session.payment_status === 'unpaid') {
-          // Delayed payment methods (e.g. bank debits) confirm later.
-          await sql`update kawthar_submissions set payment_status = 'processing'
-                    where stripe_session_id = ${session.id} and payment_status = 'pending'`;
-        } else {
-          await fulfil(session);
-        }
-        break;
-      case 'checkout.session.async_payment_failed':
-        await sql`update kawthar_submissions set payment_status = 'failed'
-                  where stripe_session_id = ${session.id} and payment_status <> 'paid'`;
-        break;
-      case 'checkout.session.expired':
-        await sql`update kawthar_submissions set payment_status = 'expired'
-                  where stripe_session_id = ${session.id} and payment_status in ('pending', 'processing')`;
-        break;
-      default:
-        break;
-    }
+    if (object?.object === 'checkout.session') handled = await handleSession(event.type, object);
+    else if (event.type === 'charge.refunded') handled = await recordRefund(object);
+    else if (event.type.startsWith('charge.dispute.')) handled = await recordDispute(object);
   } catch (err) {
     // Database trouble: answer 500 so Stripe retries the event later.
     console.error('stripe webhook handling failed', event.type, err);
     return new Response('Handler error', { status: 500 });
   }
-  return Response.json({ received: true });
+  return Response.json(handled ? { received: true } : { received: true, ignored: true });
+}
+
+// Only Checkout sessions from the Donate page (/donate).
+async function handleSession(type, session) {
+  if (session.metadata?.form !== 'donation') return false;
+  switch (type) {
+    case 'checkout.session.completed':
+    case 'checkout.session.async_payment_succeeded':
+      if (session.payment_status === 'unpaid') {
+        // Delayed payment methods (e.g. bank debits) confirm later.
+        await sql`update kawthar_submissions set payment_status = 'processing'
+                  where stripe_session_id = ${session.id} and payment_status = 'pending'`;
+      } else {
+        await fulfil(session);
+      }
+      break;
+    case 'checkout.session.async_payment_failed':
+      await sql`update kawthar_submissions set payment_status = 'failed'
+                where stripe_session_id = ${session.id} and payment_status <> 'paid'`;
+      break;
+    case 'checkout.session.expired':
+      await sql`update kawthar_submissions set payment_status = 'expired'
+                where stripe_session_id = ${session.id} and payment_status in ('pending', 'processing')`;
+      break;
+    default:
+      break;
+  }
+  return true;
+}
+
+const idOf = (v) => (typeof v === 'string' ? v : v?.id) || null;
+
+// charge.refunded fires for full and partial refunds, and amount_refunded is
+// the running total. Events can arrive out of order, so the stored total only
+// ever goes up. A refund that later fails therefore stays counted: that keeps
+// the donation out of a claim (the safe side) until someone corrects it.
+async function recordRefund(charge) {
+  const paymentIntent = idOf(charge?.payment_intent);
+  const refunded = Number(charge?.amount_refunded) || 0;
+  if (!paymentIntent || refunded <= 0) return false;
+  const rows = await sql`
+    update kawthar_submissions
+    set refunded_pence = greatest(refunded_pence, ${refunded}),
+        refunded_at = case when ${refunded} > refunded_pence then now() else refunded_at end
+    where stripe_payment_intent = ${paymentIntent} and form = 'donation'
+    returning id, refunded_pence`;
+  if (rows.length) console.info('kawthar donation refunded', rows[0].id, `total ${rows[0].refunded_pence}p`);
+  return rows.length > 0;
+}
+
+// Stripe allows one dispute per charge. Its status runs from needs_response
+// (or warning_* for an inquiry) to won, lost or prevented; a late event for an
+// earlier stage never overwrites one of those.
+const FINAL_DISPUTE = ['won', 'lost', 'prevented'];
+
+async function recordDispute(dispute) {
+  const paymentIntent = idOf(dispute?.payment_intent);
+  if (dispute?.object !== 'dispute' || !paymentIntent || !dispute.status) return false;
+  const rows = await sql`
+    update kawthar_submissions
+    set dispute_status = case
+          when dispute_status in ${sql(FINAL_DISPUTE)} and ${dispute.status} not in ${sql(FINAL_DISPUTE)} then dispute_status
+          else ${dispute.status} end,
+        disputed_at = coalesce(disputed_at, ${new Date((dispute.created || Date.now() / 1000) * 1000)})
+    where stripe_payment_intent = ${paymentIntent} and form = 'donation'
+    returning id, dispute_status`;
+  if (rows.length) console.warn('kawthar donation disputed', rows[0].id, rows[0].dispute_status);
+  return rows.length > 0;
 }
 
 async function fulfil(session) {

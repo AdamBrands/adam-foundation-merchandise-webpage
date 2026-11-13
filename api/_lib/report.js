@@ -68,16 +68,17 @@ const toCsv = (header, rows) => [header.join(','), ...rows.map((r) => header.map
 // Every Kawthar submission in the period (tests left out), one row each. The
 // fixed columns come first, then each answer in the order the forms ask for
 // it; answers a form doesn't have are blank. Repeats and unpaid donations are
-// included, so filter by email_status and payment_status.
+// included, so filter by email_status and payment_status. refunded_gbp and
+// dispute_status come from the Stripe webhook.
 const SUBMISSION_COLUMNS = ['date_time_uk', 'id', 'page', 'form', 'name', 'email', 'marketing_opt_in', 'source', 'device',
-  'email_status', 'payment_status', 'amount_gbp', 'paid_at_uk', 'stripe_payment_intent', 'consent_version'];
+  'email_status', 'payment_status', 'amount_gbp', 'paid_at_uk', 'refunded_gbp', 'dispute_status', 'stripe_payment_intent', 'consent_version'];
 const SHOWN = new Set(['email', 'updates', 'amount']);
 const PAGE_NAMES = { donation: 'donate', masjid: 'masjids', bottle: 'bottle', partner: 'corporate' };
 
 export async function getKawtharCsv(from, to) {
   const rows = await sql`
     select id, form, name, email, marketing_opt_in, source, device, email_status, payment_status,
-           amount_pence, stripe_payment_intent, consent_version, data,
+           amount_pence, refunded_pence, dispute_status, stripe_payment_intent, consent_version, data,
            to_char(created_at at time zone 'Europe/London', 'YYYY-MM-DD HH24:MI:SS') as date_time_uk,
            to_char(paid_at at time zone 'Europe/London', 'YYYY-MM-DD HH24:MI:SS') as paid_at_uk
     from kawthar_submissions
@@ -90,7 +91,8 @@ export async function getKawtharCsv(from, to) {
 
   const out = rows.map((r) => {
     const amount = r.amount_pence ? r.amount_pence / 100 : r.data?.amount;
-    const row = { ...r, page: PAGE_NAMES[r.form] || 'kawthar (old page)', amount_gbp: amount == null ? '' : Number(amount).toFixed(2) };
+    const row = { ...r, page: PAGE_NAMES[r.form] || 'kawthar (old page)', amount_gbp: amount == null ? '' : Number(amount).toFixed(2),
+      refunded_gbp: r.refunded_pence ? (r.refunded_pence / 100).toFixed(2) : '' };
     for (const k of answers) row[`answer_${k}`] = r.data?.[k];
     return row;
   });
