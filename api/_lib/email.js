@@ -71,7 +71,7 @@ async function pdfAttachment() {
   return { type: 'application/pdf', name: 'Adhkar-Book.pdf', content };
 }
 
-export const WHATSAPP = 'https://whatsapp.com/channel/0029Vb9M7AwG8l59M3Nk3L3J';
+export const WHATSAPP = 'https://whatsapp.com/channel/0029Vb8pdwN4yltJIP9Axv1n';
 export const INSTAGRAM = 'https://www.instagram.com/theadamfdn/';
 
 // Attaches the bundled PDF (when small enough) and links to BOOK_PDF_URL. If
