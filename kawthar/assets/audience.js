@@ -12,7 +12,6 @@ const KINDS = { mosque: 'masjid', partner: 'partner', donation: 'donation', book
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const slug = location.pathname.replace(/\/+$/, '').split('/').pop();
 const source = sourceFrom(location.search, /^[a-z]+$/.test(slug) ? `kawthar-${slug}` : 'kawthar');
-const DONOR_PENCE_PER_BOTTLE = 180;
 const currency = (value) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Number(value));
 
 /* ---------- Visits and the ?src= tag ---------- */
@@ -517,27 +516,6 @@ if (donorDialog && amountForm && detailsForm) {
   const amountField = donation.config.fields.find((f) => f.name === 'amount');
   const giftAid = setupGiftAid(detailsForm, donation);
 
-  // "N bottles sponsored": the donor's share of a bottle is £1.80 and Adam
-  // Foundation adds the rest (agreed narrative, Nov 2026). Display only; the
-  // payment is still the amount entered, and any remainder is pooled.
-  const bottleSummaries = document.querySelectorAll('.donor-bottle-summary, .donor-popup-bottles');
-  const syncBottles = () => {
-    const pence = Math.round(Number(amountInput.value) * 100);
-    const valid = amountInput.value.trim() !== '' && Number.isSafeInteger(pence) && pence >= 100;
-    bottleSummaries.forEach((box) => { box.hidden = !valid; });
-    if (!valid) return;
-    const bottles = Math.floor(pence / DONOR_PENCE_PER_BOTTLE);
-    const remainder = pence % DONOR_PENCE_PER_BOTTLE;
-    const heading = bottles
-      ? `${bottles.toLocaleString('en-GB')} ${bottles === 1 ? 'bottle' : 'bottles'} sponsored`
-      : 'A contribution towards a bottle';
-    const detail = bottles
-      ? `With a contribution from Adam Foundation towards each bottle.${remainder ? ` ${currency(remainder / 100)} from your gift goes towards another bottle.` : ''}`
-      : `Your ${currency(pence / 100)} joins other gifts towards a bottle, alongside Adam Foundation’s contribution.`;
-    document.querySelectorAll('[data-bottle-count]').forEach((el) => { el.textContent = heading; });
-    document.querySelectorAll('[data-bottle-detail]').forEach((el) => { el.textContent = detail; });
-  };
-
   const syncPresets = () => amountForm.querySelectorAll('[data-amount]').forEach((b) => {
     b.setAttribute('aria-pressed', String(amountInput.value !== '' && Number(b.dataset.amount) === Number(amountInput.value)));
   });
@@ -545,11 +523,9 @@ if (donorDialog && amountForm && detailsForm) {
     amountInput.value = button.dataset.amount;
     donation.touched.add('amount');
     syncPresets();
-    syncBottles();
     donation.evaluate('amount');
   }));
-  amountInput.addEventListener('input', () => { syncPresets(); syncBottles(); });
-  syncBottles();
+  amountInput.addEventListener('input', syncPresets);
 
   amountForm.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -566,7 +542,6 @@ if (donorDialog && amountForm && detailsForm) {
     donorDialog.element.querySelector('[data-donation-total]').textContent = currency(value);
     if (selection) selection.hidden = false;
     if (intro) intro.hidden = false;
-    syncBottles();
     donorDialog.open(amountForm.querySelector('button[type="submit"]'));
   });
   donorDialog.element.querySelector('[data-change-amount]').addEventListener('click', () => {
@@ -590,7 +565,6 @@ if (donorDialog && amountForm && detailsForm) {
     history.replaceState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}${location.hash}`);
     if (selection) selection.hidden = true;
     if (intro) intro.hidden = true;
-    donorDialog.element.querySelector('.donor-popup-bottles')?.setAttribute('hidden', '');
     donorDialog.open(null);
     if (outcome === 'success') {
       donation.showResult('Thank you for your donation', 'We’re confirming your payment with Stripe. A receipt is on its way to your inbox.');

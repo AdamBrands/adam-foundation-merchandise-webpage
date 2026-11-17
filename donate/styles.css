@@ -826,21 +826,3 @@ img.bottle{width:auto;object-fit:contain}
 .partners .partner-visual:after{border-color:#b9764e}
 .partners .partner-visual .scene-mark,.partners .partner-visual .scene-caption{color:#a35d38}
 .recipient-small-scene img.bottle{filter:drop-shadow(0 0 10px #8fb8e040) drop-shadow(4px 5px 4px #122d4533)}
-
-
-/* Bottle-based giving (narrative update, Nov 2026): five-step journey and
-   the bottle amount buttons with their live "bottles sponsored" summary. */
-#d-why .iv-journey{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:18px!important}
-#d-why .iv-journey>li{display:block;min-width:0;padding:16px!important}
-#d-why .iv-journey h3{min-height:66px;font-size:16px!important;overflow-wrap:break-word}
-#d-give .amount-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-#d-give .amount-buttons button{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-height:80px;padding:15px 12px;text-align:left}
-#d-give .amount-buttons button strong{font-size:17px}
-#d-give .amount-buttons button span{font-size:13px;font-weight:400}
-.donor-bottle-summary{margin:12px 0 18px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.donor-bottle-summary strong,.donor-popup-bottles strong{display:block;margin-bottom:5px}
-.donor-bottle-summary p,.donor-popup-bottles span{display:block;font-size:13px;line-height:1.6;margin:0;color:var(--muted)}
-.donor-popup-bottles{margin:0 0 22px;font-size:16px;line-height:1.6}
-@media(max-width:1050px){#d-why .iv-journey{grid-template-columns:repeat(2,minmax(0,1fr))!important}#d-why .iv-journey:before{display:none}#d-why .iv-journey h3{min-height:0}}
-@media(max-width:600px){#d-why .iv-journey{grid-template-columns:1fr!important}#d-why .iv-journey>li{display:grid;grid-template-columns:95px minmax(0,1fr);column-gap:16px}#d-why .iv-journey .iv-scene{grid-row:1/4;margin:0;align-self:center}#d-why .iv-journey h3{min-height:0;margin-bottom:7px}}
-@media(max-width:360px){#d-give .amount-buttons{grid-template-columns:1fr}}
