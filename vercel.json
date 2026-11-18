@@ -7,6 +7,7 @@
   },
   "redirects": [
     { "source": "/corporate", "destination": "/ourplanet", "permanent": true },
+    { "source": "/corporate/", "destination": "/ourplanet", "permanent": true },
     { "source": "/corporate/:path*", "destination": "/ourplanet/:path*", "permanent": true }
   ],
   "rewrites": [
