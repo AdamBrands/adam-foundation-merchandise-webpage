@@ -7,12 +7,14 @@ import { WHATSAPP } from './email.js';
 // for every form. The bottle QR book email is bookEmail() in email.js, and
 // donation receipts are sent by donationEmails() below.
 
+// Same order as the social icons on the pages.
 const SOCIALS = [
-  ['WhatsApp channel', WHATSAPP],
   ['Instagram', 'https://www.instagram.com/theadamfdn/'],
+  ['Facebook', 'https://www.facebook.com/theadamfdn/'],
   ['LinkedIn', 'https://www.linkedin.com/company/adamfoundation/'],
-  ['TikTok', 'https://www.tiktok.com/@theadamfdn'],
   ['X', 'https://x.com/theadamfdn'],
+  ['TikTok', 'https://www.tiktok.com/@theadamfdn'],
+  ['WhatsApp channel', WHATSAPP],
 ];
 
 // The page a form lives on, as shown in email footers.
