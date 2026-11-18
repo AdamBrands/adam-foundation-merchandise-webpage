@@ -7,7 +7,7 @@ The page is static HTML and CSS with no framework or build step. A few Vercel Fu
 - `/q/<code>` records a QR scan.
 - `/api/book-request` stores an Adhkar book request and emails the book.
 - `/report` shows scans, requests and opt-ins by QR code.
-- `/donate`, `/masjids`, `/bottle` and `/corporate` are the Kawthar campaign pages. `/api/kawthar` receives their forms (see [Kawthar pages](#kawthar-pages)).
+- `/donate`, `/masjids`, `/bottle` and `/ourplanet` (the Corporate page, formerly `/corporate`, which now redirects there) are the Kawthar campaign pages. `/api/kawthar` receives their forms (see [Kawthar pages](#kawthar-pages)).
 
 Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactional), using the Foundation's existing account.
 
@@ -25,7 +25,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `api/cron/weekly-report.js`: Monday email with the weekly summary and a CSV of all requests.
 - `api/cron/keepalive.js`: daily query that stops the free Supabase project pausing.
 - `api/_lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes. The underscore keeps this folder private: Vercel neither publishes it nor turns it into web addresses.
-- `donate/`, `masjids/`, `bottle/`, `corporate/`: the Kawthar pages, each an `index.html` and its own `styles.css`.
+- `donate/`, `masjids/`, `bottle/`, `ourplanet/`: the Kawthar pages, each an `index.html` and its own `styles.css`.
 - `kawthar/assets/`: shared by the Kawthar pages. `forms.js` holds the form fields and validation rules, used by the pages and by `api/kawthar.js`. `audience.js` runs the forms, `audience.css` styles their feedback, `form-ui.js` holds browser helpers and `motion.js` runs the illustration animations.
 - `api/kawthar.js`: validates and stores Kawthar form submissions, emails the person and the team, and starts Stripe Checkout for donations. Emails are built in `api/_lib/kawthar-email.js`.
 - `api/stripe-webhook.js`: confirms Kawthar donations from Stripe, then sends the receipt and team notification. It also records refunds and disputes so they are left out of Gift Aid claims. Stripe setup is in `api/_lib/stripe.js`.
@@ -71,7 +71,7 @@ The report is at `/report`, signed in with `REPORT_USER` (default `adam`) and `R
 - scan-to-request rate
 - opt-in rate
 
-A second table, Kawthar pages, shows visits and submissions for `/donate`, `/masjids`, `/bottle` and `/corporate` by source and page, with the visit-to-submission rate. Submissions leave out tests, repeats within 10 minutes and unpaid donations. Visits are counted from 12 November 2026. Friendly names for `?src=` codes go in `api/_lib/sources.js` too.
+A second table, Kawthar pages, shows visits and submissions for `/donate`, `/masjids`, `/bottle` and `/ourplanet` by source and page, with the visit-to-submission rate. Submissions leave out tests, repeats within 10 minutes and unpaid donations. Visits are counted from 12 November 2026. Friendly names for `?src=` codes go in `api/_lib/sources.js` too.
 
 It covers the last 7 days, the last 30 days, all time or a custom range, and has two CSV downloads for the period: book requests, and Kawthar submissions (every answer as its own `answer_*` column, with email, payment and source details; tests left out, repeats and unpaid donations included). The weekly email goes to `REPORT_EMAIL_TO` with both tables (Adhkar book and Kawthar pages) for the last 7 days and all time, and attaches every book request as a CSV. The free Supabase plan has no backups, so that attachment is the off-site copy.
 
@@ -136,7 +136,7 @@ The Kawthar campaign ("Our Earth. Our Amanah.") is the reusable bottle initiativ
 | `/donate` | Donors and charities | Donation (`donation`) | Stripe receipt once paid. While payments are off: a copy of their pledge, saying nothing was charged and the team will be in touch. |
 | `/masjids` | UK Masjids | Bottle application (`masjid`) | A copy of their application. Applications are reviewed, so there's no guaranteed allocation. |
 | `/bottle` | People who scan the bottle QR | Adhkar book (`bottle`) | The Adhkar book email (same book as the connect page) |
-| `/corporate` | Companies and organisations | Partnership enquiry (`partner`) | A copy of their enquiry |
+| `/ourplanet` | Companies and organisations | Partnership enquiry (`partner`) | A copy of their enquiry |
 
 The team gets a notification with every answer for each submission.
 
@@ -152,7 +152,7 @@ The team gets a notification with every answer for each submission.
 - Each page keeps its design's marketing checkbox wording. The exact text (`AUDIENCE_UPDATES` in `forms.js`) is stored under `AUDIENCE_CONSENT_VERSION`. If you change the wording on a page, change it in `forms.js` to match and bump the version. The page warns in the browser console when the two differ.
 - Team notifications go to `KAWTHAR_NOTIFY_TO` (default `info@adamfoundation.com`), with Reply-To set to the visitor.
 - A hidden honeypot field (`nickname`) catches simple bots.
-- Source: `?src=<code>` (or `?source=<code>`) is stored as the source. Without it the source is `kawthar-donate`, `kawthar-masjids`, `kawthar-bottle` or `kawthar-corporate`. `?src=test` marks a submission as a test. Set the bottle QR code's destination in the RMS portal to `https://connect.adamfoundation.com/bottle?src=<code>`. (`/q/<code>` always forwards to the connect page, so it isn't used here.) The "Discover values. Get your free Adhkar book" button on the adamfoundation.com homepage (Elementor, page 10274) links to `/corporate?src=website-homepage`.
+- Source: `?src=<code>` (or `?source=<code>`) is stored as the source. Without it the source is `kawthar-donate`, `kawthar-masjids`, `kawthar-bottle` or `kawthar-corporate` (the Corporate page at `/ourplanet` keeps the key `corporate` in visits, sources and the report). `?src=test` marks a submission as a test. Set the bottle QR code's destination in the RMS portal to `https://connect.adamfoundation.com/bottle?src=<code>`. (`/q/<code>` always forwards to the connect page, so it isn't used here.) The "Discover values. Get your free Adhkar book" button on the adamfoundation.com homepage (Elementor, page 10274) links to `/corporate?src=website-homepage`.
 - Social links in the organisation cards (Bottle QR and Corporate) show as a row of full-colour brand logos (44px touch targets) in place of the designs' single-colour icons, and unknown channels are left out rather than shown as greyed-out placeholders. Each logo's label and tooltip still name the network and handle. Each card links to its own organisation's WhatsApp channel: Adam Foundation (https://whatsapp.com/channel/0029Vb8pdwN4yltJIP9Axv1n), Community Exchange Hub (https://whatsapp.com/channel/0029Vb7BONn3WHTONBo2CO2A), Avicenna Foundation (https://whatsapp.com/channel/0029Vb8HokpDTkJxtRKjJe15) and Adam Hub (https://whatsapp.com/channel/0029Vb92Y291NCrVnou8Gl1Y). Each channel's public name was checked against its card (16 November 2026). The designs' "Handle / link to add" placeholders are filled where the handle is known (Adam Foundation TikTok and X) and left out otherwise.
 - Visits: each time one of the four pages opens, `audience.js` sends the page and source to `api/visit.js`, which stores them in `page_visits` with the device type and time. No IP addresses or cookies, so a reload counts as another visit. Bots aren't counted, and coming back from Stripe Checkout isn't a new visit. The source is the same value a submission from that visit gets, so visits and submissions compare directly. `?src=test` visits are stored with source `test`.
 - The `?src=` tag follows the visitor: on a page opened with `?src=<code>`, the links to the other Kawthar pages (Corporate's Donate and Apply buttons) carry the same `?src=<code>`, so a donation that started from the homepage button is stored as `website-homepage`.

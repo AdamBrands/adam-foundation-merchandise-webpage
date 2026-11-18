@@ -34,7 +34,7 @@ ${week.totals.failed ? `<p style="background:#fff5e6;border-left:4px solid #ad8c
 <h2 ${h2}>All time</h2>
 <h3 ${h3}>Adhkar book (QR codes)</h3>${summaryTable(allTime)}
 <h3 ${h3}>Kawthar pages</h3>${kawtharTable(kawtharAllTime)}
-<p style="font-size:13px;color:#4b566d;line-height:1.6;margin-top:24px">Kawthar visits count each time /donate, /masjids, /bottle or /corporate opens (counted from 12 November 2026), by the ?src= code the visitor arrived with. Submissions leave out tests, repeats within 10 minutes and unpaid donations. The attached CSV lists every book request to date, including each person’s marketing choice. The live report, with custom date ranges, is at https://connect.adamfoundation.com/report</p>
+<p style="font-size:13px;color:#4b566d;line-height:1.6;margin-top:24px">Kawthar visits count each time /donate, /masjids, /bottle or /ourplanet opens (counted from 12 November 2026), by the ?src= code the visitor arrived with. Submissions leave out tests, repeats within 10 minutes and unpaid donations. The attached CSV lists every book request to date, including each person’s marketing choice. The live report, with custom date ranges, is at https://connect.adamfoundation.com/report</p>
 </div></body></html>`;
 
   await sendEmail({

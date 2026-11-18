@@ -54,7 +54,7 @@ export function ukCountry(value) {
 //   presets  suggested amounts for money
 //   giftAid  counts only when the donor ticks Gift Aid (otherwise left out)
 export const FORMS = {
-  // The four Kawthar pages (/donate, /masjids, /bottle, /corporate).
+  // The four Kawthar pages (/donate, /masjids, /bottle, /ourplanet).
   // Their fields and checkbox wording come from the comms team's designs, and
   // the markup lives in each page; kawthar/assets/audience.js checks that every
   // field below exists there and that `updatesLabel` matches the page's wording.
@@ -82,7 +82,7 @@ export const FORMS = {
     ],
   },
   partner: {
-    page: '/corporate',
+    page: '/ourplanet',
     heading: 'Thank you for your enquiry',
     success: 'Thank you. We’ve received your partnership enquiry and emailed you a copy. Our team will be in touch to discuss it.',
     updatesLabel: AUDIENCE_UPDATES.partner,

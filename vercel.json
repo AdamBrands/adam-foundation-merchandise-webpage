@@ -5,6 +5,10 @@
     "api/book-request.js": { "includeFiles": "adhkar/**" },
     "api/kawthar.js": { "includeFiles": "adhkar/**" }
   },
+  "redirects": [
+    { "source": "/corporate", "destination": "/ourplanet", "permanent": true },
+    { "source": "/corporate/:path*", "destination": "/ourplanet/:path*", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/q/:code", "destination": "/api/scan?code=:code" },
     { "source": "/report", "destination": "/api/report" }

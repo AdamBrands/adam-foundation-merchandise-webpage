@@ -2,7 +2,7 @@ import { DONATION_TYPE, FORMS, displayValue, gbp, giftAidPence, submitterName } 
 import { escapeHtml } from './request.js';
 import { WHATSAPP } from './email.js';
 
-// Emails for the four Kawthar pages (/donate, /masjids, /bottle, /corporate):
+// Emails for the four Kawthar pages (/donate, /masjids, /bottle, /ourplanet):
 // a copy for the person who filled in a form, and a notification to the team
 // for every form. The bottle QR book email is bookEmail() in email.js, and
 // donation receipts are sent by donationEmails() below.

@@ -1,4 +1,4 @@
-// Kawthar pages (/donate, /masjids, /bottle, /corporate).
+// Kawthar pages (/donate, /masjids, /bottle, /ourplanet).
 //
 // The forms are the comms team's design markup. This script gives them the
 // shared rules in forms.js, errors once a field has been left (green as soon as it is
@@ -10,14 +10,20 @@ import { suggestEmail, sourceFrom } from './form-ui.js';
 // data-kind in the design markup → form key in forms.js.
 const KINDS = { mosque: 'masjid', partner: 'partner', donation: 'donation', book: 'bottle' };
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const slug = location.pathname.replace(/\/+$/, '').split('/').pop();
+// Page address → page key. The Corporate page is served at /ourplanet but keeps
+// the key "corporate", so visits, sources and the report carry on unchanged.
+const PAGE_KEYS = { ourplanet: 'corporate' };
+const pageOf = (pathname) => {
+  const last = pathname.replace(/\/+$/, '').split('/').pop();
+  return PAGE_KEYS[last] || last;
+};
+const slug = pageOf(location.pathname);
 const source = sourceFrom(location.search, /^[a-z]+$/.test(slug) ? `kawthar-${slug}` : 'kawthar');
 const currency = (value) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Number(value));
 
 /* ---------- Visits and the ?src= tag ---------- */
 
 const PAGES = ['donate', 'masjids', 'bottle', 'corporate'];
-const pageOf = (pathname) => pathname.replace(/\/+$/, '').split('/').pop();
 
 // Counts this page load against its source (api/visit.js), so visits can be
 // compared with submissions from the same link. Coming back from Stripe
