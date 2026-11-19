@@ -6,6 +6,7 @@
 // goes on to Stripe Checkout while online payments are on.
 import { FORMS, GIFT_AID, validate, checkField, isDonation, displayValue, gbp, giftAidPence, ukCountry } from './forms.js';
 import { suggestEmail, sourceFrom } from './form-ui.js';
+import { parentPage } from './parent-page.js';
 
 // data-kind in the design markup → form key in forms.js.
 const KINDS = { mosque: 'masjid', partner: 'partner', donation: 'donation', book: 'bottle' };
@@ -38,17 +39,55 @@ if (PAGES.includes(slug) && !new URLSearchParams(location.search).has('donation'
   }).catch(() => {});
 }
 
+// Shown in a frame on adamfoundation.com by assets/js/embed.js, which passes
+// the parent page's address as ?embed=. null when the page is not framed, or
+// the address isn't one of ours.
+const embedParent = window.top !== window.self
+  ? parentPage(new URLSearchParams(location.search).get('embed'), location.hostname)
+  : null;
+
 // Someone who arrived with ?src= keeps it on the links to the other Kawthar
 // pages, so a donation or application that started from a campaign link is
-// credited to that link.
+// credited to that link. In a frame, ?embed= is kept as well, so a donation
+// started after following a link still returns to the WordPress page.
 const campaign = sourceFrom(location.search, null);
-if (campaign) {
+const carried = [...(campaign ? [['src', campaign]] : []), ...(embedParent ? [['embed', embedParent]] : [])];
+if (carried.length) {
   document.querySelectorAll('a[href^="/"]').forEach((link) => {
     const url = new URL(link.href);
     if (url.origin !== location.origin || !PAGES.includes(pageOf(url.pathname))) return;
-    url.searchParams.set('src', campaign);
+    carried.forEach(([name, value]) => url.searchParams.set(name, value));
     link.href = `${url.pathname}${url.search}${url.hash}`;
   });
+}
+
+// Stripe Checkout won't load inside a frame, so in one the whole tab goes to
+// it. embed.js on the parent page does that when asked and confirms; without
+// it (a frame made some other way), the page tries itself.
+function openCheckout(url) {
+  if (window.top === window.self) {
+    location.assign(url);
+    return;
+  }
+  const leave = () => {
+    try {
+      window.top.location.href = url;
+    } catch {
+      if (!window.open(url, '_blank')) location.assign(url);
+    }
+  };
+  if (!embedParent) {
+    leave();
+    return;
+  }
+  const parentOrigin = new URL(embedParent).origin;
+  const fallback = setTimeout(leave, 1500);
+  addEventListener('message', (event) => {
+    if (event.origin === parentOrigin && event.source === window.parent && event.data?.type === 'adam-connect:leaving') {
+      clearTimeout(fallback);
+    }
+  });
+  window.parent.postMessage({ type: 'adam-connect:checkout', url }, parentOrigin);
 }
 
 function node(tag, cls, text) {
@@ -367,7 +406,7 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
       res = await fetch('/api/kawthar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ form: key, data: readValues(), source, nickname: trapInput.value }),
+        body: JSON.stringify({ form: key, data: readValues(), source, nickname: trapInput.value, returnUrl: embedParent }),
       });
       data = await res.json().catch(() => ({}));
     } catch {
@@ -377,7 +416,7 @@ function enhance(form, { extra = {}, onShowErrors } = {}) {
 
     if (res?.ok && data.ok && data.checkoutUrl) {
       confirm.textContent = 'Opening secure payment…';
-      location.assign(data.checkoutUrl);
+      openCheckout(data.checkoutUrl);
       return;
     }
     if (res?.ok && data.ok) {

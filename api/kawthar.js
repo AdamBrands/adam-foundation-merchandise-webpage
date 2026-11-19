@@ -4,6 +4,7 @@ import { confirmationEmail, notificationEmail } from './_lib/kawthar-email.js';
 import { cleanCode, deviceFrom } from './_lib/request.js';
 import { createDonationSession, formatGBP, paymentsEnabled, stripeClient, testMode, toPence } from './_lib/stripe.js';
 import { DONATION_TYPE, FORMS, GIFT_AID, consentFor, gbp, isDonation, submitterName, validate } from '../kawthar/assets/forms.js';
+import { parentPage } from '../kawthar/assets/parent-page.js';
 
 const MAX_BODY = 32 * 1024;
 
@@ -71,7 +72,7 @@ export async function POST(request) {
   const consent = consentFor(form);
 
   if (isDonation(form, paymentsEnabled())) {
-    return startDonation({ request, reply, form, name, values, source, optIn, consent });
+    return startDonation({ request, reply, form, name, values, source, optIn, consent, returnUrl: payload.returnUrl });
   }
 
   let id;
@@ -154,8 +155,13 @@ function successMessage(form, values, emailed) {
 }
 
 // Stores the submission as a pending donation and opens a Stripe Checkout
-// session. The donor comes back to the Donate page afterwards.
-async function startDonation({ request, reply, form, name, values, source, optIn, consent }) {
+// session. The donor comes back to the Donate page afterwards, or, when the
+// page is shown in a frame on adamfoundation.com, to that WordPress page
+// (returnUrl, accepted only for the hosts in kawthar/assets/parent-page.js).
+async function startDonation({ request, reply, form, name, values, source, optIn, consent, returnUrl }) {
+  const self = new URL(request.url);
+  const returnTo = parentPage(returnUrl, self.hostname) || `${self.origin}${FORMS[form].page}`;
+
   let id;
   try {
     [{ id }] = await sql`
@@ -173,9 +179,7 @@ async function startDonation({ request, reply, form, name, values, source, optIn
   }
 
   try {
-    const session = await createDonationSession({
-      id, form, values, source, origin: new URL(request.url).origin, returnPath: FORMS[form].page,
-    });
+    const session = await createDonationSession({ id, form, values, source, returnTo });
     await sql`update kawthar_submissions set stripe_session_id = ${session.id} where id = ${id}`;
     return reply(200, { checkoutUrl: session.url });
   } catch (err) {

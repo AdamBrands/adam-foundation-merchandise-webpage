@@ -26,7 +26,8 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `api/cron/keepalive.js`: daily query that stops the free Supabase project pausing.
 - `api/_lib/`: shared code. `consent.js` holds the opt-in wording and `sources.js` holds the report names for QR codes. The underscore keeps this folder private: Vercel neither publishes it nor turns it into web addresses.
 - `donate/`, `masjids/`, `bottle/`, `ourplanet/`: the Kawthar pages, each an `index.html` and its own `styles.css`.
-- `kawthar/assets/`: shared by the Kawthar pages. `forms.js` holds the form fields and validation rules, used by the pages and by `api/kawthar.js`. `audience.js` runs the forms, `audience.css` styles their feedback, `form-ui.js` holds browser helpers and `motion.js` runs the illustration animations.
+- `kawthar/assets/`: shared by the Kawthar pages. `forms.js` holds the form fields and validation rules, used by the pages and by `api/kawthar.js`. `audience.js` runs the forms, `audience.css` styles their feedback, `form-ui.js` holds browser helpers and `motion.js` runs the illustration animations. `parent-page.js` lists the adamfoundation.com pages allowed to embed these pages (see [Embedding on adamfoundation.com](#embedding-on-adamfoundationcom)).
+- `assets/js/embed.js`: loader that adamfoundation.com uses to show these pages in a frame.
 - `api/kawthar.js`: validates and stores Kawthar form submissions, emails the person and the team, and starts Stripe Checkout for donations. Emails are built in `api/_lib/kawthar-email.js`.
 - `api/stripe-webhook.js`: confirms Kawthar donations from Stripe, then sends the receipt and team notification. It also records refunds and disputes so they are left out of Gift Aid claims. Stripe setup is in `api/_lib/stripe.js`.
 - `db/schema.sql`: database tables, row-level security and the `connect_writer` role.
@@ -219,6 +220,27 @@ order by paid_at;
 If a donation is refunded or lost in a dispute after it has been claimed, the Foundation has to adjust its next claim with HMRC. Compare `refunded_at` and `disputed_at` with the date of the last claim.
 
 Before claiming, confirm the charity's HMRC Gift Aid registration and that the privacy policy covers Gift Aid. HMRC guidance: https://www.gov.uk/guidance/gift-aid-declarations-claiming-tax-back-on-donations
+
+## Embedding on adamfoundation.com
+
+The pages can be shown inside a page on adamfoundation.com. Visits, sources, submissions, donations, the report and the CSV exports then work as they do on connect.adamfoundation.com. Use the loader script, not a plain `<iframe>` and not a copy of the page's HTML. In an Elementor HTML widget:
+
+```html
+<div data-adam-connect="donate"></div>
+<script src="https://connect.adamfoundation.com/assets/js/embed.js" defer></script>
+```
+
+`data-adam-connect` is `home` (the Adhkar book page), `donate`, `masjids`, `bottle` or `ourplanet`. The frame is as tall as the window and scrolls inside, so use a full-width page template without the site header (Elementor Canvas) and the page looks the same as the original.
+
+What `assets/js/embed.js` takes care of:
+
+- Sources: the frame can't read the WordPress page's address, so the loader passes `?src=` (or `?source=`) from it to the frame. Link campaigns and QR codes to the WordPress page with `?src=<code>` as before. Without the loader, everything would be counted as `kawthar-<page>`.
+- Donations: Stripe Checkout won't open inside a frame. The page asks the loader to open it in the whole tab, and Stripe returns the donor to the WordPress page, which passes the outcome to the frame. `api/kawthar.js` accepts a return page only on the hosts listed in `kawthar/assets/parent-page.js`. Other addresses fall back to the Donate page here.
+- Visits: the frame loads straight away (never lazy-loaded), so each page view is counted once, as now.
+
+Only adamfoundation.com and www.adamfoundation.com may frame these pages (`frame-ancestors` in `vercel.json`). To embed them anywhere else, add the host there and in `kawthar/assets/parent-page.js`.
+
+The `/q/<code>` QR links still go to the connect page on this site, so printed codes and their scan counts don't change.
 
 ## Design notes
 
