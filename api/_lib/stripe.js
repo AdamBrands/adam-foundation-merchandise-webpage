@@ -40,8 +40,8 @@ const INTEGRATION_ID = 'kawthar-donation-qtrbwmzk';
 
 // Creates the hosted Checkout page for one donation. The idempotency key
 // means a retried request for the same submission never makes a second session.
-// `returnPath` is the page the donor comes back to afterwards.
-export async function createDonationSession({ id, form = 'donation', values, source, origin, returnPath = '/donate' }) {
+// `returnTo` is the full address (no query) of the page the donor comes back to afterwards.
+export async function createDonationSession({ id, form = 'donation', values, source, returnTo }) {
   const pence = toPence(values.amount);
   const onBehalfOf = values.dedication ? { on_behalf_of: String(values.dedication).slice(0, 150) } : {};
   // Stripe has no Gift Aid feature: the Foundation claims it from HMRC using the
@@ -77,8 +77,8 @@ export async function createDonationSession({ id, form = 'donation', values, sou
         submit: { message: `You’ve added Gift Aid. You pay ${formatGBP(pence)}, and Adam Foundation can claim a further ${formatGBP(giftAidPence(pence))} from HMRC at no extra cost to you.` },
       },
     } : {}),
-    success_url: `${origin}${returnPath}?donation=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}${returnPath}?donation=cancelled`,
+    success_url: `${returnTo}?donation=success&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${returnTo}?donation=cancelled`,
     expires_at: Math.floor(Date.now() / 1000) + 60 * 60, // 1 hour
     integration_identifier: INTEGRATION_ID,
   }, { idempotencyKey: `kawthar-donation-${id}` });
