@@ -20,7 +20,7 @@ const pageOf = (pathname) => {
 };
 const slug = pageOf(location.pathname);
 const source = sourceFrom(location.search, /^[a-z]+$/.test(slug) ? `kawthar-${slug}` : 'kawthar');
-const DONOR_PENCE_PER_BOTTLE = 250;
+const DONOR_PENCE_PER_BOTTLE = 200;
 const currency = (value) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Number(value));
 
 /* ---------- Visits and the ?src= tag ---------- */
@@ -562,8 +562,8 @@ if (donorDialog && amountForm && detailsForm) {
   const amountField = donation.config.fields.find((f) => f.name === 'amount');
   const giftAid = setupGiftAid(detailsForm, donation);
 
-  // "N bottles sponsored": each bottle is £2.50 from the donor (changed
-  // from £2 on 19 Nov 2026). Display only; the payment is still the amount entered,
+  // "N bottles sponsored": each bottle is £2 from the donor (back from
+  // £2.50 on 23 Nov 2026). Display only; the payment is still the amount entered,
   // and any remainder is pooled towards another bottle.
   const bottleSummaries = document.querySelectorAll('.donor-bottle-summary, .donor-popup-bottles');
   const syncBottles = () => {
