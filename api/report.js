@@ -50,6 +50,7 @@ export async function GET(request) {
   return new Response(`<!doctype html><html lang="en-GB"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>Connect page report · Adam Foundation</title>
+<link rel="icon" href="/assets/images/favicon-32.png" sizes="32x32" type="image/png">
 <style>
 body{margin:0;font-family:Arial,sans-serif;color:#061238;background:#fff}
 main{max-width:860px;margin:0 auto;padding:32px 16px}
