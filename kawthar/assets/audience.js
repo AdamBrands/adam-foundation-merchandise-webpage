@@ -4,7 +4,7 @@
 // shared rules in forms.js, errors once a field has been left (green as soon as it is
 // right), an error summary, a review step, then /api/kawthar. The Donate page
 // goes on to Stripe Checkout while online payments are on.
-import { FORMS, GIFT_AID, validate, checkField, isDonation, displayValue, gbp, giftAidPence, ukCountry } from './forms.js';
+import { BOTTLE, FORMS, GIFT_AID, validate, checkField, isDonation, displayValue, gbp, giftAidPence, ukCountry } from './forms.js';
 import { suggestEmail, sourceFrom } from './form-ui.js';
 import { parentPage, EMBED_HOSTS } from './parent-page.js';
 
@@ -20,7 +20,7 @@ const pageOf = (pathname) => {
 };
 const slug = pageOf(location.pathname);
 const source = sourceFrom(location.search, /^[a-z]+$/.test(slug) ? `kawthar-${slug}` : 'kawthar');
-const DONOR_PENCE_PER_BOTTLE = 200;
+const DONOR_PENCE_PER_BOTTLE = BOTTLE.pencePerBottle;
 const currency = (value) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Number(value));
 
 /* ---------- Visits and the ?src= tag ---------- */

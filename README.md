@@ -29,6 +29,7 @@ Data is held in Supabase. Email is sent through Mandrill (Mailchimp Transactiona
 - `kawthar/assets/`: shared by the Kawthar pages. `forms.js` holds the form fields and validation rules, used by the pages and by `api/kawthar.js`. `audience.js` runs the forms, `audience.css` styles their feedback, `form-ui.js` holds browser helpers and `motion.js` runs the illustration animations. `parent-page.js` lists the adamfoundation.com pages allowed to embed these pages (see [Embedding on adamfoundation.com](#embedding-on-adamfoundationcom)).
 - `assets/js/embed.js`: loader that adamfoundation.com uses to show these pages in a frame.
 - `api/kawthar.js`: validates and stores Kawthar form submissions, emails the person and the team, and starts Stripe Checkout for donations. Emails are built in `api/_lib/kawthar-email.js`.
+- `api/donations.js`: the donations API that the Donate page on adamfoundation.com calls (see [Donations API](#donations-api-for-adamfoundationcom)). `api/_lib/donation.js` holds the donation steps it shares with `api/kawthar.js`, and `api/_lib/cors.js` the websites allowed to call it.
 - `api/stripe-webhook.js`: confirms Kawthar donations from Stripe, then sends the receipt and team notification. It also records refunds and disputes so they are left out of Gift Aid claims. Stripe setup is in `api/_lib/stripe.js`.
 - `db/schema.sql`: database tables, row-level security and the `connect_writer` role.
 - `adhkar/adhkar-book.pdf`: the book ("Daily Adhkar", 82 pages), published at `/adhkar/adhkar-book.pdf`. It's a lighter copy of the designer's print file "ADHKAR BOOK (Perfect bound) version 2.pdf". Only the background images are recompressed, and the text and artwork are unchanged (23 MB instead of 27 MB).
@@ -110,6 +111,7 @@ It covers the last 7 days, the last 30 days, all time or a custom range, and has
 | `REPORT_EMAIL_TO` | Comma-separated recipients of the weekly report |
 | `KAWTHAR_NOTIFY_TO` | Optional. Who receives Kawthar form notifications, comma-separated. Defaults to `info@adamfoundation.com`. |
 | `STRIPE_SECRET_KEY` | Optional. Turns on Kawthar donations. Use a restricted key (`rk_…`) with Checkout Sessions write and PaymentIntents read. Test keys go in **Preview** only, live keys in **Production**. Mark it Sensitive. |
+| `DONATION_API_ORIGINS` | Optional. Extra websites allowed to call `/api/donations`, comma-separated origins such as `https://staging.adamfoundation.com`. adamfoundation.com and www.adamfoundation.com are always allowed. HTTPS only, except `http://localhost:<port>` for the website developer's local testing: set that in **Preview** only. |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret (`whsec_…`) of the Stripe webhook endpoint for `/api/stripe-webhook`. Needed whenever `STRIPE_SECRET_KEY` is set. Sensitive. |
 | `CRON_SECRET` | Random string. Vercel sends it to the cron functions automatically. |
 
@@ -220,6 +222,18 @@ order by paid_at;
 If a donation is refunded or lost in a dispute after it has been claimed, the Foundation has to adjust its next claim with HMRC. Compare `refunded_at` and `disputed_at` with the date of the last claim.
 
 Before claiming, confirm the charity's HMRC Gift Aid registration and that the privacy policy covers Gift Aid. HMRC guidance: https://www.gov.uk/guidance/gift-aid-declarations-claiming-tax-back-on-donations
+
+## Donations API (for adamfoundation.com)
+
+The Kawthar pages are being rebuilt directly on adamfoundation.com (WordPress). Its Donate page takes donations through connect, using `api/donations.js`, so Stripe, Gift Aid, receipts, the team notification, refunds and disputes, and `/report` keep working from one place. The developer's guide, with request and response examples, is [docs/donations-api.md](docs/donations-api.md). Hand that file to the website developer.
+
+- `GET /api/donations` returns the settings the page needs: whether payments are on, the amount limits, the price per bottle and its presets (`BOTTLE` in `kawthar/assets/forms.js`), the donation fields, and the exact email-updates and Gift Aid wording with their versions.
+- `POST /api/donations` validates the answers with the same rules as `/donate` (`kawthar/assets/forms.js`), stores the donation in `kawthar_submissions` (form `donation`, `payment_status = 'pending'`) and returns a Stripe Checkout `checkoutUrl`. From there it's the same as `/donate`: `api/stripe-webhook.js` marks it paid and sends the receipt and team notification.
+- `GET /api/donations?session_id=cs_…` returns the amount and status for the thank-you message.
+- Only browser origins in `api/_lib/cors.js` may call it: https://adamfoundation.com, https://www.adamfoundation.com and any in `DONATION_API_ORIGINS`. Others get `403`. Stripe returns the donor only to a page on those same origins (`returnUrl`). There's no API key: the API is as open as the `/donate` form, with the same validation, honeypot and 32 KB limit. A rate-limit rule on `/api/donations` in the Vercel Firewall is an optional extra.
+- Source: the page passes its `?src=` value as `source`. Without one, donations are stored as `website-donate`, so `/report` keeps them apart from connect's own `kawthar-donate`. Visits to the WordPress page aren't counted (only connect's pages send visits), so its row in `/report` shows submissions without visits.
+- Online donations are off (`503 payments_unavailable`) while `STRIPE_SECRET_KEY` is unset. Unlike `/donate`, the API doesn't record pledges.
+- If the Gift Aid or email-updates wording changes in `forms.js`, the WordPress page picks it up from the settings call; tell the developer if they've written it into the page.
 
 ## Embedding on adamfoundation.com
 
