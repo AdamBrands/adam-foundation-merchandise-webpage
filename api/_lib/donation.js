@@ -38,7 +38,9 @@ export function prepareDonation(values) {
 
 // Stores a validated, prepared donation with payment_status "pending" and
 // opens a Stripe Checkout session. `returnTo` is the full address (no query)
-// of the page Stripe sends the donor back to. Returns { id, checkoutUrl }.
+// of the page Stripe sends the donor back to. Returns { id, sessionId,
+// checkoutUrl }: sessionId is the Stripe Checkout session (cs_…), which
+// Stripe also adds to the return address as ?session_id=.
 export async function startDonation({ request, values, source, returnTo }) {
   const form = 'donation';
   const consent = consentFor(form);
@@ -61,7 +63,7 @@ export async function startDonation({ request, values, source, returnTo }) {
   try {
     const session = await createDonationSession({ id, form, values, source, returnTo });
     await sql`update kawthar_submissions set stripe_session_id = ${session.id} where id = ${id}`;
-    return { id, checkoutUrl: session.url };
+    return { id, sessionId: session.id, checkoutUrl: session.url };
   } catch (err) {
     console.error('stripe checkout session failed', err);
     await sql`
