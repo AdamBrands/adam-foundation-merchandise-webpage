@@ -36,6 +36,13 @@ export const GIFT_AID = {
   ].join(' '),
 };
 
+// What a donation buys: each Kawthar bottle is £2 from the donor, and Adam
+// Foundation contributes the rest. Used by the Donate page's "N bottles
+// sponsored" line (audience.js) and served to adamfoundation.com by
+// api/donations.js. The page's bottle buttons (donate/index.html) show these
+// presets and prices too, so change them together.
+export const BOTTLE = { pencePerBottle: 200, presets: [10, 25, 50, 100], defaultBottles: 25 };
+
 // Gift Aid adds 25p for every £1 given. The donor's payment never changes.
 export const giftAidPence = (pence) => Math.round(Number(pence) / 4);
 export const gbp = (pounds) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Number(pounds));

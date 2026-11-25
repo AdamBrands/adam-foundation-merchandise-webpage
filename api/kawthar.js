@@ -2,8 +2,9 @@ import { sql } from './_lib/db.js';
 import { bookEmail, sendEmail } from './_lib/email.js';
 import { confirmationEmail, notificationEmail } from './_lib/kawthar-email.js';
 import { cleanCode, deviceFrom } from './_lib/request.js';
-import { createDonationSession, formatGBP, paymentsEnabled, stripeClient, testMode, toPence } from './_lib/stripe.js';
-import { DONATION_TYPE, FORMS, GIFT_AID, consentFor, gbp, isDonation, submitterName, validate } from '../kawthar/assets/forms.js';
+import { DonationError, donationStatus, prepareDonation, startDonation } from './_lib/donation.js';
+import { paymentsEnabled, testMode } from './_lib/stripe.js';
+import { FORMS, consentFor, isDonation, submitterName, validate } from '../kawthar/assets/forms.js';
 import { parentPage } from '../kawthar/assets/parent-page.js';
 
 const MAX_BODY = 32 * 1024;
@@ -51,20 +52,9 @@ export async function POST(request) {
     return reply(422, { message: 'Please correct the highlighted answers.', errors });
   }
 
-  // Every donation (paid or pledged) is recorded as Sadaqah; never taken from the browser.
-  if (form === 'donation') values.donation_type = DONATION_TYPE.key;
-
-  // Gift Aid: the declaration is recorded here, with the server's time, not
-  // taken from the browser. It is stored with the donation (data jsonb) and
-  // covers this donation only. Unticked donations carry gift_aid: false.
-  if (form === 'donation' && values.gift_aid) {
-    values.gift_aid_declaration = {
-      text: GIFT_AID.declaration(gbp(values.amount)),
-      version: GIFT_AID.version,
-      scope: GIFT_AID.scope,
-      declared_at: new Date().toISOString(),
-    };
-  }
+  // Every donation (paid or pledged) is Sadaqah, and a ticked Gift Aid box is
+  // recorded as a declaration with the server's time (api/_lib/donation.js).
+  if (form === 'donation') prepareDonation(values);
 
   const source = cleanCode(payload.source) || 'kawthar';
   const optIn = values.updates === true;
@@ -72,7 +62,7 @@ export async function POST(request) {
   const consent = consentFor(form);
 
   if (isDonation(form, paymentsEnabled())) {
-    return startDonation({ request, reply, form, name, values, source, optIn, consent, returnUrl: payload.returnUrl });
+    return donate({ request, reply, form, values, source, returnUrl: payload.returnUrl });
   }
 
   let id;
@@ -155,39 +145,21 @@ function successMessage(form, values, emailed) {
 }
 
 // Stores the submission as a pending donation and opens a Stripe Checkout
-// session. The donor comes back to the Donate page afterwards, or, when the
-// page is shown in a frame on adamfoundation.com, to that WordPress page
-// (returnUrl, accepted only for the hosts in kawthar/assets/parent-page.js).
-async function startDonation({ request, reply, form, name, values, source, optIn, consent, returnUrl }) {
+// session (api/_lib/donation.js). The donor comes back to the Donate page
+// afterwards, or, when the page is shown in a frame on adamfoundation.com, to
+// that WordPress page (returnUrl, accepted only for the hosts in
+// kawthar/assets/parent-page.js).
+async function donate({ request, reply, form, values, source, returnUrl }) {
   const self = new URL(request.url);
   const returnTo = parentPage(returnUrl, self.hostname) || `${self.origin}${FORMS[form].page}`;
-
-  let id;
   try {
-    [{ id }] = await sql`
-      insert into kawthar_submissions
-        (form, name, email, data, marketing_opt_in, consent_text, consent_version, source, device, is_test,
-         email_status, payment_status, amount_pence)
-      values
-        (${form}, ${name}, ${values.email}, ${sql.json(values)}, ${optIn}, ${consent.text},
-         ${consent.version}, ${source}, ${deviceFrom(request)}, ${source === 'test' || testMode()},
-         'pending', 'pending', ${toPence(values.amount)})
-      returning id`;
+    const { checkoutUrl } = await startDonation({ request, values, source, returnTo });
+    return reply(200, { checkoutUrl });
   } catch (err) {
-    console.error('kawthar donation insert failed', err);
-    return reply(503, { message: 'We couldn’t start your donation just now. Please try again in a moment. Nothing you entered has been lost.' });
-  }
-
-  try {
-    const session = await createDonationSession({ id, form, values, source, returnTo });
-    await sql`update kawthar_submissions set stripe_session_id = ${session.id} where id = ${id}`;
-    return reply(200, { checkoutUrl: session.url });
-  } catch (err) {
-    console.error('stripe checkout session failed', err);
-    await sql`
-      update kawthar_submissions set payment_status = 'error', email_error = ${String(err.message).slice(0, 500)}
-      where id = ${id}`.catch((e) => console.error('status update failed', e));
-    return reply(503, { message: 'We couldn’t open the secure payment page just now. Please try again in a moment. Nothing has been charged.' });
+    if (!(err instanceof DonationError)) throw err;
+    return err.stage === 'insert'
+      ? reply(503, { message: 'We couldn’t start your donation just now. Please try again in a moment. Nothing you entered has been lost.' })
+      : reply(503, { message: 'We couldn’t open the secure payment page just now. Please try again in a moment. Nothing has been charged.' });
   }
 }
 
@@ -199,20 +171,7 @@ export async function GET(request) {
   const sessionId = new URL(request.url).searchParams.get('session_id');
   if (!sessionId) return Response.json({ payments: paymentsEnabled(), testMode: paymentsEnabled() && testMode() }, { headers });
 
-  if (!paymentsEnabled() || !/^cs_(test|live)_[A-Za-z0-9]{10,200}$/.test(sessionId)) {
-    return Response.json({ ok: false }, { status: 404, headers });
-  }
-  try {
-    const session = await stripeClient().checkout.sessions.retrieve(sessionId);
-    if (session.metadata?.form !== 'donation') return Response.json({ ok: false }, { status: 404, headers });
-    return Response.json({
-      ok: true,
-      paid: session.payment_status !== 'unpaid',
-      status: session.status,
-      amount: formatGBP(session.amount_total ?? 0),
-    }, { headers });
-  } catch (err) {
-    console.error('stripe session lookup failed', err.message);
-    return Response.json({ ok: false }, { status: 404, headers });
-  }
+  const status = await donationStatus(sessionId);
+  if (!status) return Response.json({ ok: false }, { status: 404, headers });
+  return Response.json({ ok: true, ...status }, { headers });
 }
