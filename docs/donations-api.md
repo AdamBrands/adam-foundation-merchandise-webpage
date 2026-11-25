@@ -97,7 +97,7 @@ Request:
 
 Every donation is Sadaqah; the API sets this itself. When Gift Aid is ticked, the API records the declaration with the amount and the time. A declaration covers one donation, so if the donor changes the amount after ticking Gift Aid, untick the box so they confirm again.
 
-Success: `200 { "ok": true, "checkoutUrl": "https://checkout.stripe.com/…" }`. The payment page expires after an hour.
+Success: `200 { "ok": true, "sessionId": "cs_live_…", "checkoutUrl": "https://checkout.stripe.com/…" }`. The payment page expires after an hour. `sessionId` identifies this donation: Stripe adds the same value to the return address as `?session_id=`, and the status call takes it (see [Saving donations in WordPress](#saving-donations-in-wordpress)).
 
 ## `GET /api/donations?session_id=cs_…`: after payment
 
@@ -106,6 +106,25 @@ Success: `200 { "ok": true, "checkoutUrl": "https://checkout.stripe.com/…" }`.
 ```
 
 `paid: false` means the payment is still being processed (some bank payments take a while): say thank you and that the receipt will be emailed once it's confirmed. Connect's own Donate page words it as: "Your donation of £50.00 is being processed. We’ll email your receipt as soon as it’s confirmed." An unknown session gives `404 not_found`; show a general thank-you instead of an error, because the payment is recorded either way.
+
+## Saving donations in WordPress
+
+WordPress may keep its own copy of each donation. Connect stays the record of whether a donation was paid: it sends the receipt, records refunds and disputes, and is what Adam Foundation uses for Gift Aid claims.
+
+1. **Save when the API returns `checkoutUrl`**, before redirecting the donor, with the `sessionId` from the same response and a status of `pending`. Don't save before calling the API: answers the API rejects would be stored.
+2. **When the donor comes back** with `?donation=success&session_id=…`, find the record by `session_id` and update it from the status call.
+3. **Donors who close the tab never come back.** To bring their records up to date, WordPress's server can call `GET /api/donations?session_id=…` itself (calls from a server, which send no `Origin` header, are accepted), for example hourly for records still `pending`:
+   - `paid: true`: paid.
+   - `status: "complete"` with `paid: false`: payment still processing. Check again later.
+   - `status: "open"`: the donor is still on the payment page (it expires an hour after the donation started).
+   - `status: "expired"`: not paid; the donor left without paying.
+4. **Refunds and disputes are recorded only in connect.** The WordPress copy won't show them, so don't use it for Gift Aid claims or refund decisions.
+5. **Personal data.** Each donation includes the donor's name, email, phone and, with Gift Aid, home address. In WordPress:
+   - limit who can see these records to the staff who need them
+   - don't add them to marketing lists unless `updates` is `true`
+   - when a donor asks for their data to be deleted, delete it in WordPress and tell Adam Foundation so the connect copy is dealt with too
+
+   Adam Foundation will make sure its privacy policy covers both copies.
 
 ## Errors
 
@@ -138,7 +157,7 @@ const params = new URLSearchParams(location.search);
 if (params.get('donation') === 'success' && params.get('session_id')) {
   fetch(`${API}?session_id=${encodeURIComponent(params.get('session_id'))}`)
     .then((r) => r.json())
-    .then((s) => showThanks(s.ok ? s.amount : null)) // your own function
+    .then((s) => showThanks(s.ok ? s.amount : null)) // your own function; also update the WordPress copy
     .catch(() => showThanks(null));
 } else if (params.get('donation') === 'cancelled') {
   showMessage('Your donation was cancelled. Nothing has been charged.');
@@ -161,7 +180,10 @@ form.addEventListener('submit', async (event) => {
     }),
   });
   const body = await res.json().catch(() => ({}));
-  if (body.checkoutUrl) return location.assign(body.checkoutUrl);
+  if (body.checkoutUrl) {
+    await saveWordPressCopy({ ...data, sessionId: body.sessionId, status: 'pending' }); // your own function
+    return location.assign(body.checkoutUrl);
+  }
   showErrors(body.errors || {}, body.message || 'Something went wrong. Please try again.');
 });
 </script>
@@ -169,6 +191,12 @@ form.addEventListener('submit', async (event) => {
 
 ## Testing
 
-Test on the Preview (test-mode) deployment the Adam Foundation team gives you, where `testMode` is `true`, using Stripe's test card `4242 4242 4242 4242` with any future date and any CVC. Send `"source": "test"` on the live site only if the team asks you to; real cards are charged there.
+Testing uses the live API with real payments, so keep test donations small and mark them as tests.
 
-Ask the team for a donation's row and the receipt email to confirm a test went through end to end.
+1. **Where to test from.** The live API accepts calls from adamfoundation.com and www.adamfoundation.com. To test from a staging site first, send Adam Foundation its exact address (e.g. `https://staging.adamfoundation.com`) so it can be allowed.
+2. **Mark every test donation** with `"source": "test"`. Test donations are left out of Adam Foundation's reports and Gift Aid claims. The donor receipt and team notification are still sent.
+3. **Use the smallest amount**, £1, with a real card. Leave Gift Aid unticked unless you are testing the Gift Aid boxes.
+4. **Tell Adam Foundation** the time and email address of each test donation. They will check it was recorded and the receipt was sent, then refund it in Stripe. Stripe keeps its processing fee on a refunded payment, so each test costs a few pence.
+5. **Test the cancel path too:** start a donation and press back on Stripe's page. Nothing is charged, and the page should show the cancelled message.
+
+Remove `"source": "test"` before the page goes live.

@@ -9,7 +9,7 @@ import { BOTTLE, DONATION_TYPE, FORMS, GIFT_AID, consentFor, validate } from '..
 // stay in one place. The developer's guide is docs/donations-api.md.
 //
 //   GET  /api/donations                   settings for the page (amounts, fields, wording)
-//   POST /api/donations                   stores the donation, returns a Stripe Checkout URL
+//   POST /api/donations                   stores the donation, returns a Stripe Checkout URL and its session id
 //   GET  /api/donations?session_id=cs_…   the donation's status after Stripe Checkout
 //
 // Only the browser origins in api/_lib/cors.js may call it. Donations are the
@@ -122,13 +122,15 @@ export async function POST(request) {
   prepareDonation(values);
 
   try {
-    const { checkoutUrl } = await startDonation({
+    const { sessionId, checkoutUrl } = await startDonation({
       request,
       values,
       source: cleanCode(payload.source) || DEFAULT_SOURCE,
       returnTo,
     });
-    return reply(200, { checkoutUrl });
+    // sessionId lets adamfoundation.com match its own copy of the donation to
+    // the payment: Stripe returns it as ?session_id=, and the status call takes it.
+    return reply(200, { sessionId, checkoutUrl });
   } catch (err) {
     if (!(err instanceof DonationError)) throw err;
     return err.stage === 'insert'
