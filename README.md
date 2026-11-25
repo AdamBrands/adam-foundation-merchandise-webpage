@@ -237,6 +237,7 @@ What `assets/js/embed.js` takes care of:
 - Sources: the frame can't read the WordPress page's address, so the loader passes `?src=` (or `?source=`) from it to the frame. Link campaigns and QR codes to the WordPress page with `?src=<code>` as before. Without the loader, everything would be counted as `kawthar-<page>`.
 - Donations: Stripe Checkout won't open inside a frame. The page asks the loader to open it in the whole tab, and Stripe returns the donor to the WordPress page, which passes the outcome to the frame. `api/kawthar.js` accepts a return page only on the hosts listed in `kawthar/assets/parent-page.js`. Other addresses fall back to the Donate page here.
 - Visits: the frame loads straight away (never lazy-loaded), so each page view is counted once, as now.
+- Links: in a frame on adamfoundation.com, links to Donate and Masjids open https://adamfoundation.com/donate/ and https://adamfoundation.com/masjids/ in the whole tab (with `?src=` kept), so visitors stay on the main site. The list is `PARENT_PAGES` in `kawthar/assets/audience.js`. Other links open in the frame.
 
 Only adamfoundation.com and www.adamfoundation.com may frame these pages (`frame-ancestors` in `vercel.json`). To embed them anywhere else, add the host there and in `kawthar/assets/parent-page.js`.
 

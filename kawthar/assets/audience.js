@@ -6,7 +6,7 @@
 // goes on to Stripe Checkout while online payments are on.
 import { FORMS, GIFT_AID, validate, checkField, isDonation, displayValue, gbp, giftAidPence, ukCountry } from './forms.js';
 import { suggestEmail, sourceFrom } from './form-ui.js';
-import { parentPage } from './parent-page.js';
+import { parentPage, EMBED_HOSTS } from './parent-page.js';
 
 // data-kind in the design markup → form key in forms.js.
 const KINDS = { mosque: 'masjid', partner: 'partner', donation: 'donation', book: 'bottle' };
@@ -50,12 +50,30 @@ const embedParent = window.top !== window.self
 // pages, so a donation or application that started from a campaign link is
 // credited to that link. In a frame, ?embed= is kept as well, so a donation
 // started after following a link still returns to the WordPress page.
+//
+// In a frame on adamfoundation.com, links to a page that also lives there
+// (PARENT_PAGES) open that adamfoundation.com page in the whole tab instead, so
+// the visitor stays on the main site. ?src= goes with them. Other links open in
+// the frame as before.
+const PARENT_PAGES = { donate: '/donate/', masjids: '/masjids/' };
+const parentSite = embedParent && EMBED_HOSTS.includes(new URL(embedParent).hostname)
+  ? new URL(embedParent).origin
+  : null;
 const campaign = sourceFrom(location.search, null);
 const carried = [...(campaign ? [['src', campaign]] : []), ...(embedParent ? [['embed', embedParent]] : [])];
 if (carried.length) {
   document.querySelectorAll('a[href^="/"]').forEach((link) => {
     const url = new URL(link.href);
-    if (url.origin !== location.origin || !PAGES.includes(pageOf(url.pathname))) return;
+    const page = pageOf(url.pathname);
+    if (url.origin !== location.origin || !PAGES.includes(page)) return;
+    if (parentSite && PARENT_PAGES[page]) {
+      const target = new URL(PARENT_PAGES[page], parentSite);
+      if (campaign) target.searchParams.set('src', campaign);
+      target.hash = url.hash;
+      link.href = target.href;
+      link.target = '_top';
+      return;
+    }
     carried.forEach(([name, value]) => url.searchParams.set(name, value));
     link.href = `${url.pathname}${url.search}${url.hash}`;
   });
