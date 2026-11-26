@@ -191,12 +191,17 @@ form.addEventListener('submit', async (event) => {
 
 ## Testing
 
-Testing uses the live API with real payments, so keep test donations small and mark them as tests.
+### 1. Sandbox (test payments)
 
-1. **Where to test from.** The live API accepts calls from adamfoundation.com and www.adamfoundation.com. To test from a staging site first, send Adam Foundation its exact address (e.g. `https://staging.adamfoundation.com`) so it can be allowed.
-2. **Mark every test donation** with `"source": "test"`. Test donations are left out of Adam Foundation's reports and Gift Aid claims. The donor receipt and team notification are still sent.
-3. **Use the smallest amount**, £1, with a real card. Leave Gift Aid unticked unless you are testing the Gift Aid boxes.
-4. **Tell Adam Foundation** the time and email address of each test donation. They will check it was recorded and the receipt was sent, then refund it in Stripe. Stripe keeps its processing fee on a refunded payment, so each test costs a few pence.
-5. **Test the cancel path too:** start a donation and press back on Stripe's page. Nothing is charged, and the page should show the cancelled message.
+Test against the sandbox first. It is a copy of the API connected to Stripe's sandbox, so no real money moves.
 
-Remove `"source": "test"` before the page goes live.
+- **Sandbox API address:** sent to you separately. Use it in place of `https://connect.adamfoundation.com/api/donations` for every call.
+- **Access key:** sent to you separately. Add it to the sandbox address on every call: `…/api/donations?x-vercel-protection-bypass=<key>`. For the status call, add it with `&`: `…/api/donations?x-vercel-protection-bypass=<key>&session_id=cs_test_…`. Keep the key out of the public page's code once you go live.
+- **Your test website:** send Adam Foundation the exact address you'll test from (e.g. `https://staging.adamfoundation.com` or `http://localhost:8080`) so it can be allowed. `returnUrl` must be a page on that address.
+- **Test cards:** `4242 4242 4242 4242` pays; `4000 0000 0000 9995` is declined. Any future expiry date, any 3-digit CVC, any name.
+- The settings call returns `"testMode": true`, and session ids start `cs_test_`. Sandbox donations are marked as tests automatically, so you don't need `"source": "test"`.
+- Receipts are emailed as normal, so use an email address you can check.
+
+### 2. One live donation before go-live
+
+When the sandbox works, make one real £1 donation on the live page, with `"source": "test"` so it stays out of Adam Foundation's reports and Gift Aid claims. Tell Adam Foundation its time and email address; they will confirm it and refund it in Stripe (Stripe keeps its fee, a few pence). Remove `"source": "test"` before the page goes live.
